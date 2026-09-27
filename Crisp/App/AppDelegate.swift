@@ -1013,8 +1013,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         p.isReleasedWhenClosed = false
         // Must be able to join the Space of a full-screen app: from its revealed
         // menu bar the click registers (icon highlights) but the panel otherwise
-        // lands invisibly on the desktop Space.
-        p.collectionBehavior = [.transient, .ignoresCycle, .canJoinAllSpaces, .fullScreenAuxiliary]
+        // lands invisibly on the desktop Space. Stationary, not transient: the
+        // panel stays ordered in while closed, so a click on the wallpaper
+        // (Show Desktop) swept it aside with the app windows and it opened
+        // off screen (#186).
+        p.collectionBehavior = [.stationary, .ignoresCycle, .canJoinAllSpaces, .fullScreenAuxiliary]
         p.delegate = self
         p.onCancel = { [weak self] in self?.closePanel() }
         return p
