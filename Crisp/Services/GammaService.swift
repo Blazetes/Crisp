@@ -19,6 +19,20 @@ struct GammaAdjustment {
     var quantizationLevels: Int = 256
     var isInverted: Bool = false
     var isPaused: Bool = false
+
+    /// Every value at neutral (pause does not count): nothing to apply or save.
+    var isNeutral: Bool {
+        contrast == 0 && gammaVal == 0 && gain == 0 && colorTemperature == 0 &&
+        rGamma == 0 && gGamma == 0 && bGamma == 0 &&
+        rGain == 0 && gGain == 0 && bGain == 0 && !isInverted &&
+        quantizationLevels == 256
+    }
+}
+
+extension Notification.Name {
+    /// Posted by GammaService.set with the display UUID as the object, so an open
+    /// Image Adjustment view picks up a change it did not make.
+    static let crispGammaAdjustmentDidChange = Notification.Name("crisp.gammaAdjustmentDidChange")
 }
 
 /// Applies software gamma / image adjustments to a display using
@@ -167,6 +181,27 @@ final class GammaService: @unchecked Sendable {
             let removeInfo: NSDictionary = [profileIDKey: NSNull()]
             ColorSyncDeviceSetCustomProfiles(deviceClass, uuid, removeInfo as CFDictionary)
         }
+    }
+
+    /// Sets, applies and saves a display's adjustment in one step, for the view and
+    /// anything else that changes it. Neutral values clear the saved state and restore
+    /// the factory profile; paused values are saved but show identity.
+    @MainActor
+    func set(_ adj: GammaAdjustment, for display: DisplayInfo) {
+        let displayID = display.displayID
+        if adj.isNeutral {
+            clearSavedState(for: display)
+            resetSingleDisplay(displayID)
+        } else {
+            saveState(adj, for: display)
+            if adj.isPaused {
+                adjustmentsLock.withLock { activeAdjustments[displayID] = adj }
+                applyIdentity(for: displayID)
+            } else {
+                apply(adj, for: displayID)
+            }
+        }
+        NotificationCenter.default.post(name: .crispGammaAdjustmentDidChange, object: display.displayUUID)
     }
 
     // MARK: - Persistence (displayUUID keyed, survives displayID reassignment; issue #32)
