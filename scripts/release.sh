@@ -1,8 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-# Crisp release script: builds a signed universal DMG with the Command Line
-# Tools only (no Xcode), and optionally publishes the GitHub release. Default
+# Crisp release script: builds a signed universal DMG with swiftc, and
+# optionally publishes the GitHub release. It needs Xcode for the Shortcuts
+# actions' metadata (scripts/appintents.sh) and fails without it. Default
 # is a dry run: it builds and verifies the DMG but publishes nothing. Pass
 # --publish to actually release.
 #
@@ -37,10 +38,19 @@ rm -rf "$BUILD"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 "$ROOT/scripts/fetch-sparkle.sh"
 
+# A release without the metadata would drop the Shortcuts actions without a word.
+source "$ROOT/scripts/appintents.sh"
+if ! appintents_init "$BUILD/appintents"; then
+  echo "error: Xcode not found; it is needed for the Shortcuts actions (scripts/appintents.sh)" >&2
+  exit 1
+fi
+
 echo "==> Compiling universal binary (arm64 + x86_64)…"
 SRC=$(find Crisp -name '*.swift')
 for a in arm64 x86_64; do
-  swiftc -O -swift-version 6 -parse-as-library -target "$a-apple-macos14.0" \
+  # shellcheck disable=SC2046 # the flags are a list
+  DEVELOPER_DIR="$AI_DEV" xcrun swiftc -O -swift-version 6 -parse-as-library -target "$a-apple-macos14.0" \
+    $(appintents_swiftc_flags "$a") \
     -import-objc-header Crisp/Crisp-Bridging-Header.h \
     -F "$ROOT/vendor/Sparkle" -framework Sparkle \
     -Xlinker -rpath -Xlinker @executable_path/../Frameworks \
@@ -50,6 +60,9 @@ for a in arm64 x86_64; do
     $SRC -o "$BUILD/Crisp-$a"
 done
 lipo -create "$BUILD/Crisp-arm64" "$BUILD/Crisp-x86_64" -output "$APP/Contents/MacOS/Crisp"
+
+echo "==> Writing Shortcuts actions metadata…"
+appintents_metadata "$APP/Contents/MacOS/Crisp" "$APP/Contents/Resources" arm64 x86_64
 
 # crispctl ships inside the bundle (Contents/MacOS/crispctl); Settings links it
 # into /usr/local/bin and the Homebrew cask's binary stanza does the same. The

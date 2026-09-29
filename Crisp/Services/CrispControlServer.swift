@@ -17,7 +17,19 @@ final class CrispControlServer {
 
     init(displayManager: DisplayManager) { self.displayManager = displayManager }
 
+    /// The server AppDelegate started, for the Shortcuts actions: they send the same
+    /// requests in-process, so they share crispctl's checks, errors and serialisation.
+    private(set) static weak var running: CrispControlServer?
+
+    /// One request without the socket, answered by the same path crispctl's are.
+    func handle(_ request: CrispControlRequest) async -> CrispControlResponse {
+        guard let data = try? JSONEncoder().encode(request) else { return .failure("invalid request") }
+        let reply = await response(to: data)
+        return (try? JSONDecoder().decode(CrispControlResponse.self, from: reply)) ?? .failure("response decoding failed")
+    }
+
     func start() throws {
+        Self.running = self
         guard listenerFD == -1 else { return }
         let path = CrispControlSocket.path
         guard path.utf8.count < MemoryLayout.size(ofValue: sockaddr_un().sun_path) else {

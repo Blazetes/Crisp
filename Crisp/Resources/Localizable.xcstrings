@@ -68,6 +68,9 @@
         }
       }
     },
+    "%@" : {
+      "shouldTranslate" : false
+    },
     "%@ (Crisp)" : {
       "localizations" : {
         "zh-Hans" : {
@@ -381,6 +384,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "全部描述檔"
+          }
+        }
+      }
+    },
+    "Applies a preset saved in Crisp, the same as clicking it in the menu." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用在 Crisp 中保存的预设，与在菜单中点按它的效果相同。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "套用在 Crisp 中儲存的預設組，與在選單中按一下它的效果相同。"
+          }
+        }
+      }
+    },
+    "Apply ${preset}" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用 ${preset}"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "套用 ${preset}"
+          }
+        }
+      }
+    },
+    "Apply Crisp Preset" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用 Crisp 预设"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "套用 Crisp 預設組"
           }
         }
       }
@@ -1052,6 +1103,70 @@
         }
       }
     },
+    "Crisp Display" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crisp 显示器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crisp 顯示器"
+          }
+        }
+      }
+    },
+    "Crisp is still starting. Try again." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crisp 仍在启动中，请重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crisp 仍在啟動中，請再試一次。"
+          }
+        }
+      }
+    },
+    "Crisp Preset" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crisp 预设"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crisp 預設組"
+          }
+        }
+      }
+    },
+    "Crisp refused: %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crisp 拒绝了请求：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crisp 拒絕了要求：%@"
+          }
+        }
+      }
+    },
     "Crisp v%@" : {
       "shouldTranslate" : false
     },
@@ -1184,6 +1299,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "刪除"
+          }
+        }
+      }
+    },
+    "Disconnect ${display}" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "断开 ${display}"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中斷 ${display} 的連線"
           }
         }
       }
@@ -1722,6 +1853,38 @@
         }
       }
     },
+    "Get Display Brightness" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "获取显示器亮度"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取得顯示器亮度"
+          }
+        }
+      }
+    },
+    "Get the brightness of ${display}" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "获取 ${display} 的亮度"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取得 ${display} 的亮度"
+          }
+        }
+      }
+    },
     "gray" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1879,6 +2042,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "影像調整"
+          }
+        }
+      }
+    },
+    "Image Adjustment Setting" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图像调整项"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "影像調整項目"
           }
         }
       }
@@ -2601,6 +2780,22 @@
         }
       }
     },
+    "Puts a display that Crisp disconnected back in the layout." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将 Crisp 断开的显示器放回排列中。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將 Crisp 中斷連線的顯示器放回排列中。"
+          }
+        }
+      }
+    },
     "Quantization" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2678,6 +2873,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重新連接"
+          }
+        }
+      }
+    },
+    "Reconnect ${display}" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新连接 ${display}"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新連接 ${display}"
+          }
+        }
+      }
+    },
+    "Reconnect Display" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新连接显示器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新連接顯示器"
           }
         }
       }
@@ -2811,6 +3038,38 @@
         }
       }
     },
+    "Reset Image Adjustment" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置图像调整"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置影像調整"
+          }
+        }
+      }
+    },
+    "Reset Image Adjustment of ${display}" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置 ${display} 的图像调整"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置 ${display} 的影像調整"
+          }
+        }
+      }
+    },
     "Resolution" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2839,6 +3098,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "恢復調整"
+          }
+        }
+      }
+    },
+    "Returns a display's brightness in percent." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以百分比返回显示器的亮度。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以百分比傳回顯示器的亮度。"
           }
         }
       }
@@ -2924,6 +3199,38 @@
         }
       }
     },
+    "Set ${display} to ${brightness} %" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将 ${display} 设为 ${brightness}%"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將 ${display} 設為 ${brightness}%"
+          }
+        }
+      }
+    },
+    "Set ${setting} of ${display} to ${value}" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将 ${display} 的 ${setting} 设为 ${value}"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將 ${display} 的 ${setting} 設為 ${value}"
+          }
+        }
+      }
+    },
     "Set as Main Display" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2936,6 +3243,166 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "設為主要顯示器"
+          }
+        }
+      }
+    },
+    "Set Display Brightness" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置显示器亮度"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定顯示器亮度"
+          }
+        }
+      }
+    },
+    "Set Display HDR" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置显示器 HDR"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定顯示器 HDR"
+          }
+        }
+      }
+    },
+    "Set Extra Brightness" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置额外亮度"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定額外亮度"
+          }
+        }
+      }
+    },
+    "Set Extra Brightness of ${display} to ${enabled}" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将 ${display} 的额外亮度设为 ${enabled}"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將 ${display} 的額外亮度設為 ${enabled}"
+          }
+        }
+      }
+    },
+    "Set HDR of ${display} to ${enabled}" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将 ${display} 的 HDR 设为 ${enabled}"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將 ${display} 的 HDR 設為 ${enabled}"
+          }
+        }
+      }
+    },
+    "Set Image Adjustment" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置图像调整"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定影像調整"
+          }
+        }
+      }
+    },
+    "Sets a display's brightness in percent. Above 100 needs Extra Brightness on." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以百分比设置显示器的亮度。高于 100 需要开启额外亮度。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以百分比設定顯示器的亮度。超過 100 需要開啟額外亮度。"
+          }
+        }
+      }
+    },
+    "Sets every Image Adjustment slider back to neutral, the same as Reset All in the menu." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将所有图像调整滑块恢复为中性值，与菜单中的“全部重置”相同。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將所有影像調整滑桿恢復為中性值，與選單中的「全部重置」相同。"
+          }
+        }
+      }
+    },
+    "Sets one Image Adjustment slider, the same as moving it in the menu. Most run from -100 to 100 with 0 as neutral; Quantization runs from 2 to 256." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置一个图像调整滑块，与在菜单中拖动它相同。大多数的范围为 -100 到 100，0 为中性值；量化的范围为 2 到 256。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定一個影像調整滑桿，與在選單中拖移它相同。大多數的範圍為 -100 到 100，0 為中性值；量化的範圍為 2 到 256。"
+          }
+        }
+      }
+    },
+    "Setting" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置项"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定項目"
           }
         }
       }
@@ -3184,6 +3651,22 @@
         }
       }
     },
+    "Takes a display out of the layout, the same as Disconnect Display in the menu." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将显示器移出排列，与菜单中的“断开显示器”相同。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將顯示器移出排列，與選單中的「中斷顯示器連線」相同。"
+          }
+        }
+      }
+    },
     "teal" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3263,6 +3746,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "原彩"
+          }
+        }
+      }
+    },
+    "Turns Extra Brightness on or off for a display that supports it." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为支持的显示器开启或关闭额外亮度。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "為支援的顯示器開啟或關閉額外亮度。"
+          }
+        }
+      }
+    },
+    "Turns HDR on or off for an external display that supports it." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为支持的外接显示器开启或关闭 HDR。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "為支援的外接顯示器開啟或關閉 HDR。"
           }
         }
       }
@@ -3397,6 +3912,22 @@
     },
     "v%@" : {
       "shouldTranslate" : false
+    },
+    "Value" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "值"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "數值"
+          }
+        }
+      }
     },
     "Variable (%@-%@)" : {
       "comment" : "External VRR refresh-rate row, full range",
