@@ -73,6 +73,7 @@ struct SavePresetForm: View {
     @State private var includeResolution: Bool = true
     @State private var includeBrightness: Bool = true
     @State private var includeArrangement: Bool = true
+    @State private var includeImageAdjustment: Bool = false
     /// Edit mode only: when on, Save re-captures current values instead of stored ones.
     @State private var recaptureValues: Bool = false
     /// Global shortcut for this preset, held here until Save like name and icon
@@ -97,11 +98,13 @@ struct SavePresetForm: View {
         _includeResolution = State(initialValue: editing?.includesResolution ?? true)
         _includeBrightness = State(initialValue: editing?.includesBrightness ?? true)
         _includeArrangement = State(initialValue: editing?.includesArrangement ?? true)
+        _includeImageAdjustment = State(initialValue: editing?.includesImageAdjustment
+                                        ?? PresetService.shared.anyImageAdjustment)
         _recordedShortcut = State(initialValue: editing?.shortcut)
     }
 
     private var nothingSelected: Bool {
-        !includeResolution && !includeBrightness && !includeArrangement
+        !includeResolution && !includeBrightness && !includeArrangement && !includeImageAdjustment
     }
 
     /// Stored resolution shown inline only for a single display (clean and
@@ -246,6 +249,8 @@ struct SavePresetForm: View {
                         .padding(.leading, 34)
                         .padding(.trailing, 4)
                 }
+                CaptureToggleRow(icon: "slider.horizontal.3", color: .teal,
+                                 label: "Image Adjustment", isOn: $includeImageAdjustment)
             }
 
             ShortcutRecorderRow(label: "Shortcut", shortcut: $recordedShortcut)
@@ -323,7 +328,8 @@ struct SavePresetForm: View {
                 id: editing.id, name: name, icon: selectedIcon, colorName: selectedColor,
                 includeResolution: includeResolution,
                 includeBrightness: includeBrightness,
-                includeArrangement: includeArrangement
+                includeArrangement: includeArrangement,
+                includeImageAdjustment: includeImageAdjustment
             )
             // Opt-in: refresh the stored values to the current display state.
             if recaptureValues {
@@ -335,7 +341,8 @@ struct SavePresetForm: View {
                 name: name, icon: selectedIcon,
                 includeResolution: includeResolution,
                 includeBrightness: includeBrightness,
-                includeArrangement: includeArrangement
+                includeArrangement: includeArrangement,
+                includeImageAdjustment: includeImageAdjustment
             )
             preset.colorName = selectedColor
             PresetService.shared.addPreset(preset)

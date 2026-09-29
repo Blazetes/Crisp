@@ -16,6 +16,9 @@ struct DisplayPresetEntry: Codable, Identifiable {
     var brightness: Double?       // optional brightness 0.0-1.0
     var arrangementX: Double?     // optional position
     var arrangementY: Double?
+    /// nil = not included (every preset saved before #188). A stored neutral value is
+    /// included and resets the display to neutral on apply.
+    var imageAdjustment: GammaAdjustment? = nil
 
     var resolutionLabel: String {
         guard let w = width, let h = height else { return "—" }
@@ -36,25 +39,28 @@ struct DisplayPreset: Codable, Identifiable {
     var includesResolution: Bool { displays.contains { $0.width != nil } }
     var includesBrightness: Bool { displays.contains { $0.brightness != nil } }
     var includesArrangement: Bool { displays.contains { $0.arrangementX != nil } }
+    var includesImageAdjustment: Bool { displays.contains { $0.imageAdjustment != nil } }
 
     func includes(_ capture: PresetCapture) -> Bool {
         switch capture {
         case .resolution: includesResolution
         case .brightness: includesBrightness
         case .arrangement: includesArrangement
+        case .imageAdjustment: includesImageAdjustment
         }
     }
 }
 
 /// One toggleable attribute the preset row's ⋯ menu can drop or re-add.
 enum PresetCapture: String, CaseIterable, Identifiable {
-    case resolution, brightness, arrangement
+    case resolution, brightness, arrangement, imageAdjustment
     var id: String { rawValue }
     var label: String {
         switch self {
         case .resolution: "Resolution"
         case .brightness: "Brightness"
         case .arrangement: "Arrangement"
+        case .imageAdjustment: "Image Adjustment"
         }
     }
 }
