@@ -137,31 +137,27 @@ final class GammaService: @unchecked Sendable {
         }
     }
 
-    /// Also removes any custom ColorSync profile override, restoring the factory ICC
-    /// profile (otherwise the display looks flat/uncalibrated after reset).
+    /// Puts the display back on a linear table, the vcgt of every factory profile. The
+    /// profile the user picked stays: clearing it here reverted their choice at every
+    /// reset. Software dimming shares the table, so a dimmed display gets its ramp back.
     func resetSingleDisplay(_ displayID: CGDirectDisplayID) {
         _ = adjustmentsLock.withLock { activeAdjustments.removeValue(forKey: displayID) }
+        if let factor = BrightnessService.shared.currentSoftwareBrightness(for: displayID) {
+            BrightnessService.shared.setSoftwareBrightness(factor * 100, for: displayID)
+            return
+        }
         let size = 256
         var r = (0..<size).map { CGGammaValue($0) / CGGammaValue(size - 1) }
         var g = r; var b = r
         CGSetDisplayTransferByTable(displayID, UInt32(size), &r, &g, &b)
-
-        if let rawUUID = CGDisplayCreateUUIDFromDisplayID(displayID),
-           let deviceClass = kColorSyncDisplayDeviceClass?.takeUnretainedValue(),
-           let profileIDKey = kColorSyncDeviceDefaultProfileID?.takeUnretainedValue() {
-            let uuid = rawUUID.takeRetainedValue()
-            // Passing NSNull() for the profile key removes the custom override.
-            let removeInfo: NSDictionary = [profileIDKey: NSNull()]
-            ColorSyncDeviceSetCustomProfiles(deviceClass, uuid, removeInfo as CFDictionary)
-        }
     }
 
     /// One fade per display, touched only on the main thread (see set).
     private var fades: [CGDirectDisplayID: BrightnessAnimator] = [:]
 
     /// Sets, applies and saves a display's adjustment in one step, for the view and
-    /// anything else that changes it. Neutral values clear the saved state and restore
-    /// the factory profile; paused values are saved but show identity. With `fade`,
+    /// anything else that changes it. Neutral values clear the saved state and reset
+    /// the table (resetSingleDisplay); paused values are saved but show identity. With `fade`,
     /// the display glides there from what it shows now (presets, like brightness);
     /// the saved state and the notification change at once. A new set stops a fade.
     @MainActor
