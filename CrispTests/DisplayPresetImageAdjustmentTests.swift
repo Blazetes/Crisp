@@ -25,4 +25,15 @@ final class DisplayPresetImageAdjustmentTests: XCTestCase {
         XCTAssertTrue(decoded.includesImageAdjustment)
         XCTAssertEqual(decoded.displays.first?.imageAdjustment, GammaAdjustment())
     }
+
+    /// A preset fades to its adjustment: values blend, invert waits for the last step.
+    func testFadeStepsBlendValuesAndEndOnTheTarget() {
+        let night = GammaAdjustment(contrast: -40, colorTemperature: 60, quantizationLevels: 16, isInverted: true)
+        let half = GammaAdjustment().interpolated(to: night, fraction: 0.5)
+        XCTAssertEqual(half.contrast, -20)
+        XCTAssertEqual(half.colorTemperature, 30)
+        XCTAssertEqual(half.quantizationLevels, 136)
+        XCTAssertFalse(half.isInverted)
+        XCTAssertEqual(GammaAdjustment().interpolated(to: night, fraction: 1), night)
+    }
 }

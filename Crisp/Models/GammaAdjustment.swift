@@ -25,6 +25,26 @@ struct GammaAdjustment: Codable, Equatable {
         rGain == 0 && gGain == 0 && bGain == 0 && !isInverted &&
         quantizationLevels == 256
     }
+
+    /// The step `fraction` (0...1) of the way to `target`, for a fade. Invert and
+    /// pause cannot blend, so they take the target's value at the end.
+    func interpolated(to target: GammaAdjustment, fraction: Double) -> GammaAdjustment {
+        guard fraction < 1 else { return target }
+        func mix(_ from: Double, _ to: Double) -> Double { from + (to - from) * fraction }
+        var step = self
+        step.contrast = mix(contrast, target.contrast)
+        step.gammaVal = mix(gammaVal, target.gammaVal)
+        step.gain = mix(gain, target.gain)
+        step.colorTemperature = mix(colorTemperature, target.colorTemperature)
+        step.rGamma = mix(rGamma, target.rGamma)
+        step.gGamma = mix(gGamma, target.gGamma)
+        step.bGamma = mix(bGamma, target.bGamma)
+        step.rGain = mix(rGain, target.rGain)
+        step.gGain = mix(gGain, target.gGain)
+        step.bGain = mix(bGain, target.bGain)
+        step.quantizationLevels = Int(mix(Double(quantizationLevels), Double(target.quantizationLevels)).rounded())
+        return step
+    }
 }
 
 /// crispctl's names for the adjustment (CrispControlImageSetting): clearer on the

@@ -245,7 +245,7 @@ final class PresetService: ObservableObject, @unchecked Sendable {
             }
 
             if let adjustment = entry.imageAdjustment {
-                GammaService.shared.set(adjustment, for: display)
+                GammaService.shared.set(adjustment, for: display, fade: 0.5)
             }
         }
 
