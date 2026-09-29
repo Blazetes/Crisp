@@ -173,6 +173,15 @@ final class CrispControlServer {
                     eligible: boostService.isEligible(display),
                     enabled: boostService.isEnabled(for: display)
                 )
+            },
+            presets: PresetService.shared.presets.map { preset in
+                CrispControlPreset(
+                    id: preset.id.uuidString,
+                    name: preset.name,
+                    captures: PresetCapture.allCases.filter(preset.includes).map(\.rawValue),
+                    displays: preset.displays.map(\.displayUUID),
+                    active: PresetService.shared.activePresetID == preset.id
+                )
             }
         )
         if let change = result.brightnessChange {

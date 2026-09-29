@@ -73,7 +73,8 @@ final class CrispControlModelTests: XCTestCase {
                 ["display", "disconnect", "DECC7CEF-5E36-4E9B-8F18-CE11AE5902AD"],
                 .init(command: .disconnectDisplay, selector: "DECC7CEF-5E36-4E9B-8F18-CE11AE5902AD")
             ),
-            (["display", "toggle", "42"], .init(command: .toggleDisplay, selector: "42"))
+            (["display", "toggle", "42"], .init(command: .toggleDisplay, selector: "42")),
+            (["preset", "list"], .init(command: .listPresets))
         ]
         for (arguments, request) in cases {
             XCTAssertEqual(CrispControlCLIModel.parse(arguments: arguments), .request(request))
@@ -105,7 +106,7 @@ final class CrispControlModelTests: XCTestCase {
         for word in ["help", "version", "crispctl <command>"] {
             XCTAssertTrue(CrispControlCLIModel.help.contains(word), word)
         }
-        XCTAssertEqual(CrispControlCLIModel.entries.count, 10)
+        XCTAssertEqual(CrispControlCLIModel.entries.count, 11)
         for entry in CrispControlCLIModel.entries {
             let columns = entry.columns
             XCTAssertTrue(CrispControlCLIModel.help.contains("  " + columns.command + " "), entry.usage)
@@ -257,6 +258,22 @@ final class CrispControlModelTests: XCTestCase {
             )
             XCTAssertEqual(bySelector.response, .success(display: display), selector)
         }
+    }
+
+    /// Scripts and Shortcuts parse this reply, so its field names are the contract.
+    func testPresetListRepliesWithEveryPresetUnderStableKeys() throws {
+        let preset = CrispControlPreset(
+            id: "11111111-2222-3333-4444-555555555555", name: "Night",
+            captures: ["brightness", "imageAdjustment"], displays: [display.uuid!], active: true
+        )
+        let list = CrispControlModel.handle(Data(#"{"command":"listPresets"}"#.utf8), displays: [display], presets: [preset])
+        XCTAssertEqual(list.response, .success(presets: [preset]))
+        let json = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: CrispControlModel.encode(list.response)) as? [String: Any]
+        )
+        let listed = try XCTUnwrap((json["presets"] as? [[String: Any]])?.first)
+        XCTAssertEqual(Set(listed.keys), ["id", "name", "captures", "displays", "active"])
+        XCTAssertEqual(listed["captures"] as? [String], ["brightness", "imageAdjustment"])
     }
 
     func testResolvePrefersIDThenUUIDCaseInsensitive() {

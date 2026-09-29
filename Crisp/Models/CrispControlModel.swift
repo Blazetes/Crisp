@@ -75,6 +75,7 @@ struct CrispControlRequest: Codable, Equatable {
         case connectDisplay
         case disconnectDisplay
         case toggleDisplay
+        case listPresets
     }
 
     let command: Command
@@ -98,6 +99,16 @@ struct CrispControlRequest: Codable, Equatable {
         self.enabled = enabled
     }
 }
+/// A saved preset as crispctl lists it. `captures` names what applying it changes
+/// (resolution, brightness, arrangement, imageAdjustment); `displays` are the uuids it
+/// has settings for; `active` is true for the preset last applied until a manual change.
+struct CrispControlPreset: Codable, Equatable {
+    let id: String
+    let name: String
+    let captures: [String]
+    let displays: [String]
+    let active: Bool
+}
 enum CrispControlFrame {
     enum Result: Equatable {
         case incomplete
@@ -120,6 +131,7 @@ struct CrispControlResponse: Codable, Equatable {
     let display: CrispControlDisplay?
     let brightnessBoost: CrispControlBrightnessBoostState?
     let hdr: CrispControlHDRState?
+    let presets: [CrispControlPreset]?
     let error: String?
 
     init(
@@ -128,6 +140,7 @@ struct CrispControlResponse: Codable, Equatable {
         display: CrispControlDisplay? = nil,
         brightnessBoost: CrispControlBrightnessBoostState? = nil,
         hdr: CrispControlHDRState? = nil,
+        presets: [CrispControlPreset]? = nil,
         error: String? = nil
     ) {
         self.ok = ok
@@ -135,6 +148,7 @@ struct CrispControlResponse: Codable, Equatable {
         self.display = display
         self.brightnessBoost = brightnessBoost
         self.hdr = hdr
+        self.presets = presets
         self.error = error
     }
     static func success() -> Self { Self(ok: true) }
@@ -144,6 +158,7 @@ struct CrispControlResponse: Codable, Equatable {
         Self(ok: true, brightnessBoost: brightnessBoost)
     }
     static func success(hdr: CrispControlHDRState) -> Self { Self(ok: true, hdr: hdr) }
+    static func success(presets: [CrispControlPreset]) -> Self { Self(ok: true, presets: presets) }
     static func failure(_ error: String) -> Self { Self(ok: false, error: error) }
 }
 struct CrispControlBrightnessChange: Equatable {
@@ -238,7 +253,8 @@ enum CrispControlModel {
         displays: [CrispControlDisplay],
         hdrState: (UInt32) -> CrispControlHDRState? = { _ in nil },
         hdrMutationUUID: (UInt32) -> String? = { _ in nil },
-        brightnessBoostState: (UInt32) -> CrispControlBrightnessBoostState? = { _ in nil }
+        brightnessBoostState: (UInt32) -> CrispControlBrightnessBoostState? = { _ in nil },
+        presets: [CrispControlPreset] = []
     ) -> CrispControlResult {
         guard let request = try? JSONDecoder().decode(CrispControlRequest.self, from: data) else {
             return .init(.failure("invalid request"), nil, nil, nil)
@@ -280,6 +296,8 @@ enum CrispControlModel {
             )
         case .connectDisplay, .disconnectDisplay, .toggleDisplay:
             return handleConnection(request, displays: displays)
+        case .listPresets:
+            return .init(.success(presets: presets), nil, nil, nil)
         }
     }
 
@@ -411,12 +429,13 @@ enum CrispControlModel {
 }
 enum CrispControlCLIModel {
     enum Group: String, CaseIterable {
-        case display, brightness, hdr
+        case display, brightness, hdr, preset
         var title: String {
             switch self {
             case .display: return "Display commands"
             case .brightness: return "Brightness commands"
             case .hdr: return "HDR commands"
+            case .preset: return "Preset commands"
             }
         }
         var description: String {
@@ -424,6 +443,7 @@ enum CrispControlCLIModel {
             case .display: return "List, connect and disconnect the displays Crisp controls."
             case .brightness: return "Read and set brightness and Extra Brightness."
             case .hdr: return "Read and switch HDR on external displays."
+            case .preset: return "List the presets saved in Crisp."
             }
         }
     }
@@ -485,6 +505,11 @@ enum CrispControlCLIModel {
         Entry(group: .hdr, usage: "hdr set <display> on|off", summary: "Switch HDR on an eligible external", detail: """
             Verified against the live state after the switch. If the reply is lost, do not
             retry automatically: run 'hdr get' first.
+            """),
+        Entry(group: .preset, usage: "preset list", summary: "List presets as JSON", detail: """
+            Each preset carries id, name, captures (what applying it changes: resolution,
+            brightness, arrangement, imageAdjustment), displays (the uuids it has settings
+            for) and active, which is true for the preset last applied until a manual change.
             """)
     ]
     static let otherRows: [(usage: String, arguments: String, summary: String)] = [
@@ -630,6 +655,9 @@ enum CrispControlCLIModel {
     private static func matchedRequest(_ arguments: [String]) -> CrispControlRequest? {
         if arguments == ["display", "list"] {
             return .init(command: .list)
+        }
+        if arguments == ["preset", "list"] {
+            return .init(command: .listPresets)
         }
         if arguments.count == 3, arguments[0...1] == ["brightness", "get"], !arguments[2].isEmpty {
             return .init(command: .getBrightness, selector: arguments[2])
