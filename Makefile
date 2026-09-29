@@ -82,11 +82,15 @@ lint:
 
 # Same check as CI's "Check localization keys" step: every key the code uses
 # must exist in the String Catalog (missing keys silently fall back to English).
+# The export writes every key it extracts into the catalog, so the check would pass
+# for a key the committed catalog lacks. Put the file back before checking it.
 loc-check: vendor
 	xcodegen generate
+	mkdir -p build && cp Crisp/Resources/Localizable.xcstrings build/Localizable.xcstrings.orig
 	xcodebuild -quiet -exportLocalizations -project Crisp.xcodeproj \
 		-localizationPath build/loc CODE_SIGNING_ALLOWED=NO \
-		SWIFT_EMIT_LOC_STRINGS=YES
+		SWIFT_EMIT_LOC_STRINGS=YES; status=$$?; \
+		cp build/Localizable.xcstrings.orig Crisp/Resources/Localizable.xcstrings; exit $$status
 	python3 scripts/check-localization-keys.py build/loc/en.xcloc \
 		Crisp/Resources/Localizable.xcstrings scripts/i18n-missing-allowlist.txt
 
