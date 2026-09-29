@@ -57,12 +57,16 @@ jobs:
       # key missing from the catalog silently falls back to English at runtime
       # (issue class fixed in PR #34). Export what the compiler extracts and
       # diff it against the catalog. Pre-existing gaps are tracked in the
-      # allowlist next to the script; remove entries as they get fixed.
+      # allowlist next to the script; remove entries as they get fixed. The export
+      # writes the keys it extracts into the catalog, so the committed file is put
+      # back before the check reads it.
       - name: Check localization keys
         run: |
+          mkdir -p build && cp Crisp/Resources/Localizable.xcstrings build/Localizable.xcstrings.orig
           xcodebuild -quiet -exportLocalizations -project Crisp.xcodeproj \
             -localizationPath build/loc CODE_SIGNING_ALLOWED=NO \
             SWIFT_EMIT_LOC_STRINGS=YES
+          cp build/Localizable.xcstrings.orig Crisp/Resources/Localizable.xcstrings
           python3 scripts/check-localization-keys.py build/loc/en.xcloc \
             Crisp/Resources/Localizable.xcstrings scripts/i18n-missing-allowlist.txt
       # Blocking on pushes to main, advisory on pull requests. A contributor
