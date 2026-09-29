@@ -95,7 +95,8 @@ final class PresetService: ObservableObject, @unchecked Sendable {
             name: existing.name, icon: existing.icon,
             includeResolution: existing.includesResolution,
             includeBrightness: existing.includesBrightness,
-            includeArrangement: existing.includesArrangement
+            includeArrangement: existing.includesArrangement,
+            includeImageAdjustment: existing.includesImageAdjustment
         )
         presets[index].displays = captured.displays
         savePresets()
@@ -107,7 +108,8 @@ final class PresetService: ObservableObject, @unchecked Sendable {
     /// re-captured when its inclusion actually changed, so captures left alone keep
     /// their stored values across a rename.
     func editPreset(id: UUID, name: String, icon: String, colorName: String?,
-                    includeResolution: Bool, includeBrightness: Bool, includeArrangement: Bool) {
+                    includeResolution: Bool, includeBrightness: Bool, includeArrangement: Bool,
+                    includeImageAdjustment: Bool) {
         guard let index = presets.firstIndex(where: { $0.id == id }) else { return }
         presets[index].name = name
         presets[index].icon = icon
@@ -115,7 +117,8 @@ final class PresetService: ObservableObject, @unchecked Sendable {
         savePresets()
         for (capture, want) in [(PresetCapture.resolution, includeResolution),
                                 (.brightness, includeBrightness),
-                                (.arrangement, includeArrangement)]
+                                (.arrangement, includeArrangement),
+                                (.imageAdjustment, includeImageAdjustment)]
         where presets[index].includes(capture) != want {
             setCapture(id: id, capture, included: want)
         }
@@ -152,6 +155,12 @@ final class PresetService: ObservableObject, @unchecked Sendable {
                     e.arrangementY = live.bounds.origin.y
                 } else if !included {
                     e.arrangementX = nil; e.arrangementY = nil
+                }
+            case .imageAdjustment:
+                if included, let live {
+                    e.imageAdjustment = imageAdjustment(of: live)
+                } else if !included {
+                    e.imageAdjustment = nil
                 }
             }
             return e
@@ -234,6 +243,10 @@ final class PresetService: ObservableObject, @unchecked Sendable {
                     x: Int(x), y: Int(y), for: displayID
                 )
             }
+
+            if let adjustment = entry.imageAdjustment {
+                GammaService.shared.set(adjustment, for: display, fade: 0.5)
+            }
         }
 
         activePresetID = preset.id
@@ -248,7 +261,8 @@ final class PresetService: ObservableObject, @unchecked Sendable {
     func captureCurrentState(name: String, icon: String,
                              includeResolution: Bool = true,
                              includeBrightness: Bool = true,
-                             includeArrangement: Bool = true) -> DisplayPreset {
+                             includeArrangement: Bool = true,
+                             includeImageAdjustment: Bool = false) -> DisplayPreset {
         let displays = DisplayManagerAccessor.shared.displays
         let entries: [DisplayPresetEntry] = displays.compactMap { display in
             guard display.isOnline else { return nil }
@@ -261,10 +275,25 @@ final class PresetService: ObservableObject, @unchecked Sendable {
                 refreshRate: includeResolution ? mode?.refreshRate : nil,
                 brightness: includeBrightness ? display.brightness / 100.0 : nil,
                 arrangementX: includeArrangement ? display.bounds.origin.x : nil,
-                arrangementY: includeArrangement ? display.bounds.origin.y : nil
+                arrangementY: includeArrangement ? display.bounds.origin.y : nil,
+                imageAdjustment: includeImageAdjustment ? imageAdjustment(of: display) : nil
             )
         }
         return DisplayPreset(name: name, icon: icon, displays: entries)
+    }
+
+    /// A display's Image Adjustment as a preset stores it: the saved values without
+    /// pause, neutral when it has none.
+    private func imageAdjustment(of display: DisplayInfo) -> GammaAdjustment {
+        var adjustment = GammaService.shared.loadSavedState(for: display) ?? GammaAdjustment()
+        adjustment.isPaused = false
+        return adjustment
+    }
+
+    /// Whether any online display has an Image Adjustment: the save form's default
+    /// for including it, so a preset only controls it when there is something to keep.
+    var anyImageAdjustment: Bool {
+        DisplayManagerAccessor.shared.displays.contains { $0.isOnline && !imageAdjustment(of: $0).isNeutral }
     }
 
     /// Returns the preset ID that matches the current display state, if any.

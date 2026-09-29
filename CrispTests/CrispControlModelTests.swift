@@ -73,7 +73,9 @@ final class CrispControlModelTests: XCTestCase {
                 ["display", "disconnect", "DECC7CEF-5E36-4E9B-8F18-CE11AE5902AD"],
                 .init(command: .disconnectDisplay, selector: "DECC7CEF-5E36-4E9B-8F18-CE11AE5902AD")
             ),
-            (["display", "toggle", "42"], .init(command: .toggleDisplay, selector: "42"))
+            (["display", "toggle", "42"], .init(command: .toggleDisplay, selector: "42")),
+            (["preset", "list"], .init(command: .listPresets)),
+            (["preset", "apply", "Night"], .init(command: .applyPreset, selector: "Night"))
         ]
         for (arguments, request) in cases {
             XCTAssertEqual(CrispControlCLIModel.parse(arguments: arguments), .request(request))
@@ -105,7 +107,7 @@ final class CrispControlModelTests: XCTestCase {
         for word in ["help", "version", "crispctl <command>"] {
             XCTAssertTrue(CrispControlCLIModel.help.contains(word), word)
         }
-        XCTAssertEqual(CrispControlCLIModel.entries.count, 10)
+        XCTAssertEqual(CrispControlCLIModel.entries.count, 15)
         for entry in CrispControlCLIModel.entries {
             let columns = entry.columns
             XCTAssertTrue(CrispControlCLIModel.help.contains("  " + columns.command + " "), entry.usage)
@@ -185,7 +187,7 @@ final class CrispControlModelTests: XCTestCase {
     func testOnlyBoundedTransitionCommandsGetLongerReceiveTimeouts() {
         XCTAssertEqual(CrispControlCLIModel.receiveTimeoutSeconds(for: .setBrightnessBoost), 5)
         XCTAssertEqual(CrispControlCLIModel.receiveTimeoutSeconds(for: .setHDR), 6)
-        for command in [CrispControlRequest.Command.connectDisplay, .disconnectDisplay, .toggleDisplay] {
+        for command in [CrispControlRequest.Command.connectDisplay, .disconnectDisplay, .toggleDisplay, .applyPreset] {
             XCTAssertEqual(CrispControlCLIModel.receiveTimeoutSeconds(for: command), 30)
         }
         for command in [

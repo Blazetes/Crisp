@@ -5,7 +5,7 @@ import SwiftUI
 struct ImageAdjustmentView: View {
     @ObservedObject var display: DisplayInfo
     /// Whether the parent section is expanded. The view stays instantiated when
-    /// collapsed (a curtain, not an `if`), so apply/persist side effects key off
+    /// collapsed (a curtain, not an `if`), so the apply side effect keys off
     /// this instead of onAppear/onDisappear, which fire for every display.
     let isExpanded: Bool
 
@@ -106,11 +106,7 @@ struct ImageAdjustmentView: View {
                     isActive: isPaused
                 ) {
                     isPaused.toggle()
-                    if isPaused {
-                        GammaService.shared.applyIdentity(for: display.displayID)
-                    } else {
-                        commitAdjustment()
-                    }
+                    commitAdjustment()
                 }
 
                 actionButton(
@@ -125,16 +121,13 @@ struct ImageAdjustmentView: View {
             .padding(.bottom, 8)
         }
         .onChange(of: isExpanded) { _, expanded in
-            if expanded {
-                // Re-apply so the display matches the UI; no-ops while paused.
-                if !isIdentity { commitAdjustment() }
-            } else {
-                persist()
-            }
+            // Re-apply so the display matches the UI; no-ops while paused.
+            if expanded && !current.isNeutral { GammaService.shared.apply(current, for: display.displayID) }
         }
-        .onDisappear {
-            // A collapse already persisted via onChange; only handle panel-close.
-            if isExpanded { persist() }
+        // A preset or crispctl may change the adjustment while this view holds the old values.
+        .onReceive(NotificationCenter.default.publisher(for: .crispGammaAdjustmentDidChange)) { note in
+            guard note.object as? String == display.displayUUID else { return }
+            show(GammaService.shared.loadSavedState(for: display) ?? GammaAdjustment())
         }
     }
 
@@ -205,58 +198,35 @@ struct ImageAdjustmentView: View {
 
     // MARK: - Helpers
 
-    /// Save the current adjustment, or clear it and restore identity when neutral.
-    private func persist() {
-        if isIdentity {
-            GammaService.shared.clearSavedState(for: display)
-            GammaService.shared.resetSingleDisplay(display.displayID)
-        } else {
-            let adj = GammaAdjustment(
-                contrast: contrast, gammaVal: gammaVal, gain: gain,
-                colorTemperature: colorTemperature,
-                rGamma: rGamma, gGamma: gGamma, bGamma: bGamma,
-                rGain: rGain, gGain: gGain, bGain: bGain,
-                quantizationLevels: Int(quantLevels),
-                isInverted: isInverted, isPaused: isPaused
-            )
-            GammaService.shared.saveState(adj, for: display)
-        }
-    }
-
-    /// True when every adjustment is at its neutral value (no visual effect).
-    private var isIdentity: Bool {
-        contrast == 0 && gammaVal == 0 && gain == 0 && colorTemperature == 0 &&
-        rGamma == 0 && gGamma == 0 && bGamma == 0 &&
-        rGain == 0 && gGain == 0 && bGain == 0 && !isInverted &&
-        quantLevels == 256
-    }
-
-    private func commitAdjustment() {
-        guard !isPaused else { return }
-        let adj = GammaAdjustment(
-            contrast: contrast,
-            gammaVal: gammaVal,
-            gain: gain,
+    private var current: GammaAdjustment {
+        GammaAdjustment(
+            contrast: contrast, gammaVal: gammaVal, gain: gain,
             colorTemperature: colorTemperature,
             rGamma: rGamma, gGamma: gGamma, bGamma: bGamma,
             rGain: rGain, gGain: gGain, bGain: bGain,
             quantizationLevels: Int(quantLevels),
-            isInverted: isInverted,
-            isPaused: false
+            isInverted: isInverted, isPaused: isPaused
         )
-        GammaService.shared.apply(adj, for: display.displayID)
+    }
+
+    private func show(_ adj: GammaAdjustment) {
+        contrast = adj.contrast; gammaVal = adj.gammaVal; gain = adj.gain
+        colorTemperature = adj.colorTemperature
+        rGamma = adj.rGamma; gGamma = adj.gGamma; bGamma = adj.bGamma
+        rGain = adj.rGain; gGain = adj.gGain; bGain = adj.bGain
+        quantLevels = Double(adj.quantizationLevels)
+        isInverted = adj.isInverted
+        isPaused = adj.isPaused
+    }
+
+    private func commitAdjustment() {
+        GammaService.shared.set(current, for: display)
     }
 
     @MainActor
     private func resetAll() {
-        contrast = 0; gammaVal = 0; gain = 0; colorTemperature = 0
-        rGamma = 0; gGamma = 0; bGamma = 0
-        rGain = 0;  gGain = 0;  bGain = 0
-        quantLevels = 256
-        isInverted = false
-        isPaused = false
-        GammaService.shared.clearSavedState(for: display)
-        GammaService.shared.resetSingleDisplay(display.displayID)
+        show(GammaAdjustment())
+        commitAdjustment()
     }
 }
 

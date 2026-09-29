@@ -5,7 +5,8 @@
 relaunches. The rest of this doc explains what it does.
 
 You can build the full .app in Xcode (`xcodegen generate`, then archive), or a
-full DMG with `./scripts/release.sh vX.Y.Z` (no Xcode needed). But for the fast
+full DMG with `./scripts/release.sh vX.Y.Z` (swiftc, but it needs Xcode for the
+Shortcuts actions, see below). But for the fast
 dev loop, the binary alone compiles with just the Command Line Tools:
 
 ```sh
@@ -35,6 +36,10 @@ open /Applications/Crisp.app
 ```
 
 This is the fast dev loop: edit, compile, swap, relaunch, no Xcode involved.
+
+## Shortcuts actions
+
+Shortcuts finds Crisp's actions through `Contents/Resources/Metadata.appintents`, which an Xcode build writes. `scripts/appintents.sh` does the same for the swiftc build: swiftc emits the App Intents types' const values, and `appintentsmetadataprocessor` turns them into the metadata. Both steps need Xcode's toolchain, so `release.sh` fails without Xcode, and `dev.sh` without Xcode keeps the installed app's metadata as it is, so actions you changed or added do not show in Shortcuts. After a deploy, Shortcuts picks up changed actions only after `lsregister -f /Applications/Crisp.app` and a relaunch of Shortcuts.
 
 ## crispctl
 

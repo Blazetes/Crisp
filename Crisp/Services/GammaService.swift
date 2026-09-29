@@ -2,23 +2,10 @@ import AppKit
 import CoreGraphics
 @preconcurrency import ColorSync
 
-/// Per-display software image adjustment parameters. Slider values run -100...+100
-/// with 0 = neutral, except quantizationLevels (2...256, 256 = no quantization).
-/// See docs/brightness-notes.md (gamma and software brightness) for the slider math.
-struct GammaAdjustment {
-    var contrast: Double = 0.0
-    var gammaVal: Double = 0.0          // gamma exponent 1.0 at 0
-    var gain: Double = 0.0              // multiplier 1.0 at 0
-    var colorTemperature: Double = 0.0  // 6500 K at 0
-    var rGamma: Double = 0.0            // per-channel gamma offset
-    var gGamma: Double = 0.0
-    var bGamma: Double = 0.0
-    var rGain: Double = 0.0             // per-channel gain offset
-    var gGain: Double = 0.0
-    var bGain: Double = 0.0
-    var quantizationLevels: Int = 256
-    var isInverted: Bool = false
-    var isPaused: Bool = false
+extension Notification.Name {
+    /// Posted by GammaService.set with the display UUID as the object, so an open
+    /// Image Adjustment view picks up a change it did not make.
+    static let crispGammaAdjustmentDidChange = Notification.Name("crisp.gammaAdjustmentDidChange")
 }
 
 /// Applies software gamma / image adjustments to a display using
@@ -166,6 +153,55 @@ final class GammaService: @unchecked Sendable {
             // Passing NSNull() for the profile key removes the custom override.
             let removeInfo: NSDictionary = [profileIDKey: NSNull()]
             ColorSyncDeviceSetCustomProfiles(deviceClass, uuid, removeInfo as CFDictionary)
+        }
+    }
+
+    /// One fade per display, touched only on the main thread (see set).
+    private var fades: [CGDirectDisplayID: BrightnessAnimator] = [:]
+
+    /// Sets, applies and saves a display's adjustment in one step, for the view and
+    /// anything else that changes it. Neutral values clear the saved state and restore
+    /// the factory profile; paused values are saved but show identity. With `fade`,
+    /// the display glides there from what it shows now (presets, like brightness);
+    /// the saved state and the notification change at once. A new set stops a fade.
+    @MainActor
+    func set(_ adj: GammaAdjustment, for display: DisplayInfo, fade: TimeInterval = 0) {
+        let displayID = display.displayID
+        let shown = adjustmentsLock.withLock { activeAdjustments[displayID] }
+            .flatMap { $0.isPaused ? nil : $0 } ?? GammaAdjustment()
+        fades[displayID]?.cancel()
+        if adj.isNeutral {
+            clearSavedState(for: display)
+        } else {
+            saveState(adj, for: display)
+        }
+        if fade > 0, !adj.isPaused, shown != adj {
+            let animator = fades[displayID] ?? BrightnessAnimator()
+            fades[displayID] = animator
+            // 60 steps a second: a table write takes about 0.06 ms, so the main thread keeps up.
+            animator.animate(from: 0, to: 1, steps: Int(fade * 60), duration: fade) { [weak self] fraction, isLast in
+                guard let self else { return }
+                if isLast {
+                    self.show(adj, on: displayID)
+                } else {
+                    self.apply(shown.interpolated(to: adj, fraction: fraction), for: displayID)
+                }
+            }
+        } else {
+            show(adj, on: displayID)
+        }
+        NotificationCenter.default.post(name: .crispGammaAdjustmentDidChange, object: display.displayUUID)
+        PresetService.shared.noteManualChange()
+    }
+
+    private func show(_ adj: GammaAdjustment, on displayID: CGDirectDisplayID) {
+        if adj.isNeutral {
+            resetSingleDisplay(displayID)
+        } else if adj.isPaused {
+            adjustmentsLock.withLock { activeAdjustments[displayID] = adj }
+            applyIdentity(for: displayID)
+        } else {
+            apply(adj, for: displayID)
         }
     }
 

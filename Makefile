@@ -51,7 +51,7 @@ help:
 	@echo "  make compile    compile ./Crisp-bin only, no swap (quick build check)"
 	@echo "  make test       generate the Xcode project and run unit tests"
 	@echo "  make check      lint + tests + x86_64 typecheck + localization keys, everything CI enforces"
-	@echo "  make build      signed universal DMG, no Xcode (scripts/release.sh v$(VERSION))"
+	@echo "  make build      signed universal DMG, needs Xcode (scripts/release.sh v$(VERSION))"
 	@echo "  make dmg        DMG via Xcode (scripts/build-dmg.sh)"
 	@echo "  make release ARGS=\"vX.Y.Z notes.md --publish\"   full release (scripts/release.sh)"
 	@echo "  make clean      remove build artifacts (Crisp-bin, build/, Crisp.dmg)"

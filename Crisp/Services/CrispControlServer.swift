@@ -17,7 +17,19 @@ final class CrispControlServer {
 
     init(displayManager: DisplayManager) { self.displayManager = displayManager }
 
+    /// The server AppDelegate started, for the Shortcuts actions: they send the same
+    /// requests in-process, so they share crispctl's checks, errors and serialisation.
+    private(set) static weak var running: CrispControlServer?
+
+    /// One request without the socket, answered by the same path crispctl's are.
+    func handle(_ request: CrispControlRequest) async -> CrispControlResponse {
+        guard let data = try? JSONEncoder().encode(request) else { return .failure("invalid request") }
+        let reply = await response(to: data)
+        return (try? JSONDecoder().decode(CrispControlResponse.self, from: reply)) ?? .failure("response decoding failed")
+    }
+
     func start() throws {
+        Self.running = self
         guard listenerFD == -1 else { return }
         let path = CrispControlSocket.path
         guard path.utf8.count < MemoryLayout.size(ofValue: sockaddr_un().sun_path) else {
@@ -173,6 +185,13 @@ final class CrispControlServer {
                     eligible: boostService.isEligible(display),
                     enabled: boostService.isEnabled(for: display)
                 )
+            },
+            presets: PresetService.shared.presets.map(Self.listed),
+            imageAdjustment: { id in
+                managedDisplays.first(where: { $0.displayID == id }).map { display in
+                    (GammaService.shared.loadSavedState(for: display) ?? GammaAdjustment())
+                        .controlValues(displayID: id, uuid: display.displayUUID, name: display.name)
+                }
             }
         )
         if let change = result.brightnessChange {
@@ -203,7 +222,50 @@ final class CrispControlServer {
         if let change = result.connectionChange, let error = await apply(change, among: managedDisplays) {
             return CrispControlModel.encode(.failure(error))
         }
+        if let id = result.presetToApply {
+            return await applyPreset(id: id, among: managedDisplays)
+        }
+        if let change = result.imageChange {
+            guard let display = managedDisplays.first(where: { $0.displayID == change.displayID }) else {
+                return CrispControlModel.encode(.failure("display not found"))
+            }
+            // A set changes one value and keeps the rest, pause included, like a slider;
+            // a reset is Reset All.
+            let saved = GammaService.shared.loadSavedState(for: display) ?? GammaAdjustment()
+            let adjustment = change.setting.map { saved.setting($0, to: change.value) } ?? GammaAdjustment()
+            GammaService.shared.set(adjustment, for: display)
+            return CrispControlModel.encode(.success(image: adjustment.controlValues(
+                displayID: display.displayID, uuid: display.displayUUID, name: display.name
+            )))
+        }
         return CrispControlModel.encode(result.response)
+    }
+
+    private static func listed(_ preset: DisplayPreset) -> CrispControlPreset {
+        CrispControlPreset(
+            id: preset.id.uuidString,
+            name: preset.name,
+            captures: PresetCapture.allCases.filter(preset.includes).map(\.rawValue),
+            displays: preset.displays.map(\.displayUUID),
+            active: PresetService.shared.activePresetID == preset.id
+        )
+    }
+
+    private func applyPreset(id: String, among managedDisplays: [DisplayInfo]) async -> Data {
+        let service = PresetService.shared
+        guard let preset = service.presets.first(where: { $0.id.uuidString == id }) else {
+            return CrispControlModel.encode(.failure("preset not found"))
+        }
+        // applyPreset returns at once, having done nothing, while another apply runs.
+        guard !service.isApplying else {
+            return CrispControlModel.encode(.failure("another preset is being applied; try again"))
+        }
+        // applyPreset also skips a display that is not online without a word; say which.
+        let skipped = preset.displays.map(\.displayUUID).filter { uuid in
+            !managedDisplays.contains { $0.displayUUID == uuid && $0.isOnline }
+        }
+        await service.applyPreset(preset)
+        return CrispControlModel.encode(.success(preset: Self.listed(preset), skippedDisplays: skipped))
     }
 
     private func hdrResponse(

@@ -5,7 +5,7 @@ enum CrispControlSkill {
     static let text = #"""
     ---
     name: crispctl
-    description: Control displays on a Mac that runs Crisp through its crispctl command line tool. Use when the user wants to read or set display brightness, switch Extra Brightness or HDR, list displays, or disconnect and reconnect a display from a script, a shortcut or an agent.
+    description: Control displays on a Mac that runs Crisp through its crispctl command line tool. Use when the user wants to read or set display brightness, switch Extra Brightness or HDR, list displays, disconnect and reconnect a display, change Image Adjustment (contrast, color temperature, gamma), or list and apply saved presets from a script, a shortcut or an agent.
     ---
 
     # crispctl
@@ -37,9 +37,15 @@ enum CrispControlSkill {
 
     `display disconnect|connect|toggle <display>`: the menu's Disconnect Display and Reconnect. Apple Silicon only. A disconnect that would leave no active display is refused. A display that Crisp holds disconnected is gone from every macOS list, so `display list` shows it with `connected:false` and its last-known id: address it by uuid. Asking for the state a display is already in succeeds and changes nothing. The reply can take a few seconds.
 
+    `image get|set|reset <display>`: Image Adjustment, the software sliders in the menu. `set <display> <setting> <value>` changes one: `contrast`, `gamma`, `gain`, `temperature` (-100 to 100, 0 is neutral; `temperature` -100 is 2000 K warm, 100 is 12000 K cool), `red-gamma`, `green-gamma`, `blue-gamma`, `red-gain`, `green-gain`, `blue-gain` (-100 to 100), `quantization` (2 to 256, 256 is off) or `invert` (`on`/`off`). Out of range is refused, not clamped. It is the same as moving the slider, so it clears the active preset. `reset` is Reset All. Every reply names the display (`displayID`, `uuid`, `name`) and returns all values; `get` also returns `paused`, true while the user has paused the adjustments in the menu. The display must be connected.
+
+    `preset list` and `preset apply <preset>`: the presets saved in Crisp. `list` gives each preset's `id`, `name`, `captures` (what applying it changes: `resolution`, `brightness`, `arrangement`, `imageAdjustment`), `displays` (the uuids it has settings for) and `active`. `apply` takes an id or a name in any case; a name two presets share is refused, so use the id. It is the same as clicking the preset in the menu. The reply comes after the preset is applied, and `skippedDisplays` lists the preset's displays that were not connected. An apply while another one runs is refused.
+
     ## Safety
 
-    Do not retry a command that changes state when its reply is lost or times out. It may have been applied. Read the state first (`display list`, `brightness boost get`, `hdr get`), then decide.
+    Do not retry a command that changes state when its reply is lost or times out. It may have been applied. Read the state first (`display list`, `brightness boost get`, `hdr get`, `image get`, `preset list`), then decide.
+
+    A preset can change resolution and arrangement as well as brightness. Only apply a preset the user named.
 
     A disconnect takes a screen away from the user. Only disconnect a display when the user asked for that display by name or uuid, and never the last one they are looking at.
 
@@ -52,6 +58,9 @@ enum CrispControlSkill {
 
     # Toggle one monitor by uuid (a KVM or Stream Deck button)
     crispctl display toggle FF162E67-65FC-436E-8AF5-7D87A8F20A4F
+
+    # Switch to the Night preset (from a Shortcuts automation or a launchd job at 21:00)
+    crispctl preset apply Night
     ```
     """#
 }
