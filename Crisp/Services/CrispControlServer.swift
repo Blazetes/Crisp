@@ -174,15 +174,7 @@ final class CrispControlServer {
                     enabled: boostService.isEnabled(for: display)
                 )
             },
-            presets: PresetService.shared.presets.map { preset in
-                CrispControlPreset(
-                    id: preset.id.uuidString,
-                    name: preset.name,
-                    captures: PresetCapture.allCases.filter(preset.includes).map(\.rawValue),
-                    displays: preset.displays.map(\.displayUUID),
-                    active: PresetService.shared.activePresetID == preset.id
-                )
-            }
+            presets: PresetService.shared.presets.map(Self.listed)
         )
         if let change = result.brightnessChange {
             guard let display = managedDisplays.first(where: { $0.displayID == change.displayID }) else {
@@ -212,7 +204,37 @@ final class CrispControlServer {
         if let change = result.connectionChange, let error = await apply(change, among: managedDisplays) {
             return CrispControlModel.encode(.failure(error))
         }
+        if let id = result.presetToApply {
+            return await applyPreset(id: id, among: managedDisplays)
+        }
         return CrispControlModel.encode(result.response)
+    }
+
+    private static func listed(_ preset: DisplayPreset) -> CrispControlPreset {
+        CrispControlPreset(
+            id: preset.id.uuidString,
+            name: preset.name,
+            captures: PresetCapture.allCases.filter(preset.includes).map(\.rawValue),
+            displays: preset.displays.map(\.displayUUID),
+            active: PresetService.shared.activePresetID == preset.id
+        )
+    }
+
+    private func applyPreset(id: String, among managedDisplays: [DisplayInfo]) async -> Data {
+        let service = PresetService.shared
+        guard let preset = service.presets.first(where: { $0.id.uuidString == id }) else {
+            return CrispControlModel.encode(.failure("preset not found"))
+        }
+        // applyPreset returns at once, having done nothing, while another apply runs.
+        guard !service.isApplying else {
+            return CrispControlModel.encode(.failure("another preset is being applied; try again"))
+        }
+        // applyPreset also skips a display that is not online without a word; say which.
+        let skipped = preset.displays.map(\.displayUUID).filter { uuid in
+            !managedDisplays.contains { $0.displayUUID == uuid && $0.isOnline }
+        }
+        await service.applyPreset(preset)
+        return CrispControlModel.encode(.success(preset: Self.listed(preset), skippedDisplays: skipped))
     }
 
     private func hdrResponse(

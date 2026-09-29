@@ -76,13 +76,15 @@ struct CrispControlRequest: Codable, Equatable {
         case disconnectDisplay
         case toggleDisplay
         case listPresets
+        case applyPreset
     }
 
     let command: Command
     let display: UInt32?
     let brightness: Double?
     /// A display as a person typed it: a runtime id or a uuid. Takes precedence over
-    /// `display`, which stays for clients that already send the numeric id.
+    /// `display`, which stays for clients that already send the numeric id. For
+    /// `applyPreset`, the preset's id or name.
     let selector: String?
     let enabled: Bool?
     init(
@@ -132,6 +134,10 @@ struct CrispControlResponse: Codable, Equatable {
     let brightnessBoost: CrispControlBrightnessBoostState?
     let hdr: CrispControlHDRState?
     let presets: [CrispControlPreset]?
+    let preset: CrispControlPreset?
+    /// `applyPreset`: uuids of the preset's displays that were not connected, so nothing
+    /// was applied to them.
+    let skippedDisplays: [String]?
     let error: String?
 
     init(
@@ -141,6 +147,8 @@ struct CrispControlResponse: Codable, Equatable {
         brightnessBoost: CrispControlBrightnessBoostState? = nil,
         hdr: CrispControlHDRState? = nil,
         presets: [CrispControlPreset]? = nil,
+        preset: CrispControlPreset? = nil,
+        skippedDisplays: [String]? = nil,
         error: String? = nil
     ) {
         self.ok = ok
@@ -149,6 +157,8 @@ struct CrispControlResponse: Codable, Equatable {
         self.brightnessBoost = brightnessBoost
         self.hdr = hdr
         self.presets = presets
+        self.preset = preset
+        self.skippedDisplays = skippedDisplays
         self.error = error
     }
     static func success() -> Self { Self(ok: true) }
@@ -159,6 +169,9 @@ struct CrispControlResponse: Codable, Equatable {
     }
     static func success(hdr: CrispControlHDRState) -> Self { Self(ok: true, hdr: hdr) }
     static func success(presets: [CrispControlPreset]) -> Self { Self(ok: true, presets: presets) }
+    static func success(preset: CrispControlPreset, skippedDisplays: [String]) -> Self {
+        Self(ok: true, preset: preset, skippedDisplays: skippedDisplays)
+    }
     static func failure(_ error: String) -> Self { Self(ok: false, error: error) }
 }
 struct CrispControlBrightnessChange: Equatable {
@@ -186,19 +199,23 @@ struct CrispControlResult {
     let brightnessBoostChange: CrispControlBrightnessBoostChange?
     let hdrChange: CrispControlHDRChange?
     let connectionChange: CrispControlConnectionChange?
+    /// The id of the one preset `applyPreset` resolved to.
+    let presetToApply: String?
 
     init(
         _ response: CrispControlResponse,
         _ brightnessChange: CrispControlBrightnessChange?,
         _ brightnessBoostChange: CrispControlBrightnessBoostChange?,
         _ hdrChange: CrispControlHDRChange?,
-        _ connectionChange: CrispControlConnectionChange? = nil
+        _ connectionChange: CrispControlConnectionChange? = nil,
+        presetToApply: String? = nil
     ) {
         self.response = response
         self.brightnessChange = brightnessChange
         self.brightnessBoostChange = brightnessBoostChange
         self.hdrChange = hdrChange
         self.connectionChange = connectionChange
+        self.presetToApply = presetToApply
     }
 }
 enum CrispControlModel {
@@ -296,9 +313,38 @@ enum CrispControlModel {
             )
         case .connectDisplay, .disconnectDisplay, .toggleDisplay:
             return handleConnection(request, displays: displays)
-        case .listPresets:
-            return .init(.success(presets: presets), nil, nil, nil)
+        case .listPresets, .applyPreset:
+            return handlePreset(request, presets: presets)
         }
+    }
+
+    private static func handlePreset(_ request: CrispControlRequest, presets: [CrispControlPreset]) -> CrispControlResult {
+        guard request.command == .applyPreset else { return .init(.success(presets: presets), nil, nil, nil) }
+        guard let selector = request.selector, !selector.isEmpty else {
+            return .init(.failure("preset is required"), nil, nil, nil)
+        }
+        switch resolve(preset: selector, in: presets) {
+        case .success(let preset): return .init(.success(), nil, nil, nil, presetToApply: preset.id)
+        case .failure(let error): return .init(.failure(error.message), nil, nil, nil)
+        }
+    }
+
+    struct PresetSelectorError: Error { let message: String }
+
+    /// Finds a preset by the selector a person typed: its id, else its name in any case.
+    /// A name two presets share is refused, since applying either could be wrong.
+    static func resolve(preset selector: String, in presets: [CrispControlPreset]) -> Result<CrispControlPreset, PresetSelectorError> {
+        if let match = presets.first(where: { $0.id.caseInsensitiveCompare(selector) == .orderedSame }) {
+            return .success(match)
+        }
+        let named = presets.filter { $0.name.caseInsensitiveCompare(selector) == .orderedSame }
+        if named.count == 1 { return .success(named[0]) }
+        if named.count > 1 {
+            let ids = named.map(\.id).joined(separator: ", ")
+            return .failure(.init(message: "\(named.count) presets are named '\(selector)'; use an id: \(ids)"))
+        }
+        let names = presets.isEmpty ? "none saved" : presets.map(\.name).joined(separator: ", ")
+        return .failure(.init(message: "no preset named '\(selector)'; presets: \(names)"))
     }
 
     /// Resolves a connection request against the online list plus the displays Crisp
@@ -443,7 +489,7 @@ enum CrispControlCLIModel {
             case .display: return "List, connect and disconnect the displays Crisp controls."
             case .brightness: return "Read and set brightness and Extra Brightness."
             case .hdr: return "Read and switch HDR on external displays."
-            case .preset: return "List the presets saved in Crisp."
+            case .preset: return "List and apply the presets saved in Crisp."
             }
         }
     }
@@ -510,6 +556,13 @@ enum CrispControlCLIModel {
             Each preset carries id, name, captures (what applying it changes: resolution,
             brightness, arrangement, imageAdjustment), displays (the uuids it has settings
             for) and active, which is true for the preset last applied until a manual change.
+            """),
+        Entry(group: .preset, usage: "preset apply <preset>", summary: "Apply a preset", detail: """
+            <preset> is an id or a name from 'preset list'. Names match in any case; a name
+            two presets share is refused, so use the id. The same as clicking the preset in
+            the menu. The reply comes after it is applied; skippedDisplays lists the
+            preset's displays that were not connected. Refused while another preset is
+            being applied.
             """)
     ]
     static let otherRows: [(usage: String, arguments: String, summary: String)] = [
@@ -603,6 +656,8 @@ enum CrispControlCLIModel {
         // The window server answers inside the app's 10 s wrapper, but the DDC hold
         // ahead of the transaction can wait 15 s and the mode restore after it 3 s.
         case .connectDisplay, .disconnectDisplay, .toggleDisplay: return 30
+        // A resolution or arrangement change waits for the reconfiguration to land.
+        case .applyPreset: return 30
         default: return 2
         }
     }
@@ -658,6 +713,9 @@ enum CrispControlCLIModel {
         }
         if arguments == ["preset", "list"] {
             return .init(command: .listPresets)
+        }
+        if arguments.count == 3, arguments[0...1] == ["preset", "apply"], !arguments[2].isEmpty {
+            return .init(command: .applyPreset, selector: arguments[2])
         }
         if arguments.count == 3, arguments[0...1] == ["brightness", "get"], !arguments[2].isEmpty {
             return .init(command: .getBrightness, selector: arguments[2])
