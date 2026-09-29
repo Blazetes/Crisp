@@ -5,7 +5,7 @@
 # Compiles the binary with swiftc, swaps it into the installed /Applications/Crisp.app,
 # syncs the version from project.yml, re-signs (stable identity if present, else ad
 # hoc), and relaunches. One command.
-# For a release DMG (needs full Xcode) use ./build.sh instead. See docs/BUILDING.md.
+# For a release DMG (needs full Xcode) use ./scripts/release.sh instead. See docs/BUILDING.md.
 #
 # Override the target app with:  CRISP_APP=/path/to/Crisp.app ./dev.sh
 set -euo pipefail
@@ -16,7 +16,7 @@ APP="${CRISP_APP:-/Applications/Crisp.app}"
 
 if [ ! -d "$APP" ]; then
     echo "error: $APP not found." >&2
-    echo "Install Crisp once (DMG or ./build.sh) so there's a bundle to swap into." >&2
+    echo "Install Crisp once (DMG or ./scripts/release.sh) so there's a bundle to swap into." >&2
     exit 1
 fi
 
