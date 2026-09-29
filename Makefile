@@ -25,6 +25,9 @@ VERSION := $(shell grep -E '^[[:space:]]*MARKETING_VERSION:' project.yml | head 
 # the Command Line Tools: xcodebuild (test) and SwiftLint's SourceKit need it.
 ifneq (,$(wildcard /Applications/Xcode.app))
 export DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
+# git hooks inherit SDKROOT for the Command Line Tools SDK from the git shim; with
+# Xcode's swiftc that pairs a compiler and an SDK of different Swift versions.
+unexport SDKROOT
 endif
 
 # swiftc invocation kept in sync with dev.sh's compile step.
