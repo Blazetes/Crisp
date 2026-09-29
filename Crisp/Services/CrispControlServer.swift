@@ -174,7 +174,13 @@ final class CrispControlServer {
                     enabled: boostService.isEnabled(for: display)
                 )
             },
-            presets: PresetService.shared.presets.map(Self.listed)
+            presets: PresetService.shared.presets.map(Self.listed),
+            imageAdjustment: { id in
+                managedDisplays.first(where: { $0.displayID == id }).map { display in
+                    (GammaService.shared.loadSavedState(for: display) ?? GammaAdjustment())
+                        .controlValues(displayID: id, uuid: display.displayUUID, name: display.name)
+                }
+            }
         )
         if let change = result.brightnessChange {
             guard let display = managedDisplays.first(where: { $0.displayID == change.displayID }) else {
@@ -206,6 +212,19 @@ final class CrispControlServer {
         }
         if let id = result.presetToApply {
             return await applyPreset(id: id, among: managedDisplays)
+        }
+        if let change = result.imageChange {
+            guard let display = managedDisplays.first(where: { $0.displayID == change.displayID }) else {
+                return CrispControlModel.encode(.failure("display not found"))
+            }
+            // A set changes one value and keeps the rest, pause included, like a slider;
+            // a reset is Reset All.
+            let saved = GammaService.shared.loadSavedState(for: display) ?? GammaAdjustment()
+            let adjustment = change.setting.map { saved.setting($0, to: change.value) } ?? GammaAdjustment()
+            GammaService.shared.set(adjustment, for: display)
+            return CrispControlModel.encode(.success(image: adjustment.controlValues(
+                displayID: display.displayID, uuid: display.displayUUID, name: display.name
+            )))
         }
         return CrispControlModel.encode(result.response)
     }

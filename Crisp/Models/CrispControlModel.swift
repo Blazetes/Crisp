@@ -77,6 +77,9 @@ struct CrispControlRequest: Codable, Equatable {
         case toggleDisplay
         case listPresets
         case applyPreset
+        case getImage
+        case setImage
+        case resetImage
     }
 
     let command: Command
@@ -87,18 +90,25 @@ struct CrispControlRequest: Codable, Equatable {
     /// `applyPreset`, the preset's id or name.
     let selector: String?
     let enabled: Bool?
+    /// `setImage`: which setting, and its new value (invert: 0 or 1).
+    let setting: CrispControlImageSetting?
+    let value: Double?
     init(
         command: Command,
         display: UInt32? = nil,
         brightness: Double? = nil,
         selector: String? = nil,
-        enabled: Bool? = nil
+        enabled: Bool? = nil,
+        setting: CrispControlImageSetting? = nil,
+        value: Double? = nil
     ) {
         self.command = command
         self.display = display
         self.brightness = brightness
         self.selector = selector
         self.enabled = enabled
+        self.setting = setting
+        self.value = value
     }
 }
 /// A saved preset as crispctl lists it. `captures` names what applying it changes
@@ -110,6 +120,48 @@ struct CrispControlPreset: Codable, Equatable {
     let captures: [String]
     let displays: [String]
     let active: Bool
+}
+/// One Image Adjustment slider or switch as crispctl names it.
+enum CrispControlImageSetting: String, CaseIterable, Codable {
+    case contrast, gamma, gain, temperature
+    case redGamma = "red-gamma", greenGamma = "green-gamma", blueGamma = "blue-gamma"
+    case redGain = "red-gain", greenGain = "green-gain", blueGain = "blue-gain"
+    case quantization, invert
+
+    /// The slider's range; invert is 0 (off) or 1 (on).
+    var range: ClosedRange<Double> {
+        switch self {
+        case .quantization: return 2...256
+        case .invert: return 0...1
+        default: return -100...100
+        }
+    }
+}
+/// A display's Image Adjustment as crispctl reports it. `paused` is read-only: Pause in
+/// the menu shows the display without the adjustment but keeps the values.
+struct CrispControlImageAdjustment: Codable, Equatable {
+    let displayID: UInt32
+    let uuid: String
+    let name: String
+    let contrast: Double
+    let gamma: Double
+    let gain: Double
+    let temperature: Double
+    let redGamma: Double
+    let greenGamma: Double
+    let blueGamma: Double
+    let redGain: Double
+    let greenGain: Double
+    let blueGain: Double
+    let quantization: Int
+    let invert: Bool
+    let paused: Bool
+}
+/// An image set (one setting to a value) or a reset (setting nil) for one display.
+struct CrispControlImageChange: Equatable {
+    let displayID: UInt32
+    let setting: CrispControlImageSetting?
+    let value: Double
 }
 enum CrispControlFrame {
     enum Result: Equatable {
@@ -138,6 +190,7 @@ struct CrispControlResponse: Codable, Equatable {
     /// `applyPreset`: uuids of the preset's displays that were not connected, so nothing
     /// was applied to them.
     let skippedDisplays: [String]?
+    let image: CrispControlImageAdjustment?
     let error: String?
 
     init(
@@ -149,6 +202,7 @@ struct CrispControlResponse: Codable, Equatable {
         presets: [CrispControlPreset]? = nil,
         preset: CrispControlPreset? = nil,
         skippedDisplays: [String]? = nil,
+        image: CrispControlImageAdjustment? = nil,
         error: String? = nil
     ) {
         self.ok = ok
@@ -159,6 +213,7 @@ struct CrispControlResponse: Codable, Equatable {
         self.presets = presets
         self.preset = preset
         self.skippedDisplays = skippedDisplays
+        self.image = image
         self.error = error
     }
     static func success() -> Self { Self(ok: true) }
@@ -169,6 +224,7 @@ struct CrispControlResponse: Codable, Equatable {
     }
     static func success(hdr: CrispControlHDRState) -> Self { Self(ok: true, hdr: hdr) }
     static func success(presets: [CrispControlPreset]) -> Self { Self(ok: true, presets: presets) }
+    static func success(image: CrispControlImageAdjustment) -> Self { Self(ok: true, image: image) }
     static func success(preset: CrispControlPreset, skippedDisplays: [String]) -> Self {
         Self(ok: true, preset: preset, skippedDisplays: skippedDisplays)
     }
@@ -201,6 +257,7 @@ struct CrispControlResult {
     let connectionChange: CrispControlConnectionChange?
     /// The id of the one preset `applyPreset` resolved to.
     let presetToApply: String?
+    let imageChange: CrispControlImageChange?
 
     init(
         _ response: CrispControlResponse,
@@ -208,7 +265,8 @@ struct CrispControlResult {
         _ brightnessBoostChange: CrispControlBrightnessBoostChange?,
         _ hdrChange: CrispControlHDRChange?,
         _ connectionChange: CrispControlConnectionChange? = nil,
-        presetToApply: String? = nil
+        presetToApply: String? = nil,
+        imageChange: CrispControlImageChange? = nil
     ) {
         self.response = response
         self.brightnessChange = brightnessChange
@@ -216,6 +274,7 @@ struct CrispControlResult {
         self.hdrChange = hdrChange
         self.connectionChange = connectionChange
         self.presetToApply = presetToApply
+        self.imageChange = imageChange
     }
 }
 enum CrispControlModel {
@@ -271,7 +330,8 @@ enum CrispControlModel {
         hdrState: (UInt32) -> CrispControlHDRState? = { _ in nil },
         hdrMutationUUID: (UInt32) -> String? = { _ in nil },
         brightnessBoostState: (UInt32) -> CrispControlBrightnessBoostState? = { _ in nil },
-        presets: [CrispControlPreset] = []
+        presets: [CrispControlPreset] = [],
+        imageAdjustment: (UInt32) -> CrispControlImageAdjustment? = { _ in nil }
     ) -> CrispControlResult {
         guard let request = try? JSONDecoder().decode(CrispControlRequest.self, from: data) else {
             return .init(.failure("invalid request"), nil, nil, nil)
@@ -289,23 +349,8 @@ enum CrispControlModel {
             return .init(.success(display: display), nil, nil, nil)
         case .setBrightness:
             return handleSetBrightness(request, displays: displays, brightnessBoostState: brightnessBoostState)
-        case .getBrightnessBoost:
-            guard hasDisplaySelector(request) else {
-                return .init(.failure("display is required"), nil, nil, nil)
-            }
-            guard let display = target(of: request, in: displays),
-                  let state = brightnessBoostState(display.id) else {
-                return .init(.failure("display not found"), nil, nil, nil)
-            }
-            return .init(.success(brightnessBoost: state), nil, nil, nil)
-        case .setBrightnessBoost:
-            guard hasDisplaySelector(request), let enabled = request.enabled else {
-                return .init(.failure("display and state are required"), nil, nil, nil)
-            }
-            guard let display = target(of: request, in: displays) else {
-                return .init(.failure("display not found"), nil, nil, nil)
-            }
-            return .init(.success(), nil, .init(displayID: display.id, enabled: enabled), nil)
+        case .getBrightnessBoost, .setBrightnessBoost:
+            return handleBrightnessBoost(request, displays: displays, brightnessBoostState: brightnessBoostState)
         case .getHDR, .setHDR:
             return handleHDR(
                 request, displays: displays, hdrState: hdrState,
@@ -315,6 +360,67 @@ enum CrispControlModel {
             return handleConnection(request, displays: displays)
         case .listPresets, .applyPreset:
             return handlePreset(request, presets: presets)
+        case .getImage, .setImage, .resetImage:
+            return handleImage(request, displays: displays, imageAdjustment: imageAdjustment)
+        }
+    }
+
+    private static func handleBrightnessBoost(
+        _ request: CrispControlRequest,
+        displays: [CrispControlDisplay],
+        brightnessBoostState: (UInt32) -> CrispControlBrightnessBoostState?
+    ) -> CrispControlResult {
+        if request.command == .getBrightnessBoost {
+            guard hasDisplaySelector(request) else {
+                return .init(.failure("display is required"), nil, nil, nil)
+            }
+            guard let display = target(of: request, in: displays),
+                  let state = brightnessBoostState(display.id) else {
+                return .init(.failure("display not found"), nil, nil, nil)
+            }
+            return .init(.success(brightnessBoost: state), nil, nil, nil)
+        }
+        guard hasDisplaySelector(request), let enabled = request.enabled else {
+            return .init(.failure("display and state are required"), nil, nil, nil)
+        }
+        guard let display = target(of: request, in: displays) else {
+            return .init(.failure("display not found"), nil, nil, nil)
+        }
+        return .init(.success(), nil, .init(displayID: display.id, enabled: enabled), nil)
+    }
+
+    /// Image Adjustment lives in the display's gamma table, so only a connected display
+    /// has one to read or set. Values outside a setting's range are refused, not clamped.
+    private static func handleImage(
+        _ request: CrispControlRequest,
+        displays: [CrispControlDisplay],
+        imageAdjustment: (UInt32) -> CrispControlImageAdjustment?
+    ) -> CrispControlResult {
+        guard hasDisplaySelector(request) else {
+            return .init(.failure("display is required"), nil, nil, nil)
+        }
+        guard let display = target(of: request, in: displays) else {
+            return .init(.failure("display not found"), nil, nil, nil)
+        }
+        guard display.connected ?? true, let current = imageAdjustment(display.id) else {
+            return .init(.failure("display is not connected"), nil, nil, nil)
+        }
+        switch request.command {
+        case .getImage:
+            return .init(.success(image: current), nil, nil, nil)
+        case .resetImage:
+            return .init(.success(), nil, nil, nil, imageChange: .init(displayID: display.id, setting: nil, value: 0))
+        default:
+            guard let setting = request.setting, let value = request.value else {
+                return .init(.failure("setting and value are required"), nil, nil, nil)
+            }
+            guard value.isFinite, setting.range.contains(value),
+                  setting != .quantization || value.rounded() == value else {
+                let range = setting == .invert ? "on or off"
+                    : "\(Int(setting.range.lowerBound)) to \(Int(setting.range.upperBound))"
+                return .init(.failure("\(setting.rawValue) must be \(range)"), nil, nil, nil)
+            }
+            return .init(.success(), nil, nil, nil, imageChange: .init(displayID: display.id, setting: setting, value: value))
         }
     }
 
@@ -475,12 +581,13 @@ enum CrispControlModel {
 }
 enum CrispControlCLIModel {
     enum Group: String, CaseIterable {
-        case display, brightness, hdr, preset
+        case display, brightness, hdr, image, preset
         var title: String {
             switch self {
             case .display: return "Display commands"
             case .brightness: return "Brightness commands"
             case .hdr: return "HDR commands"
+            case .image: return "Image Adjustment commands"
             case .preset: return "Preset commands"
             }
         }
@@ -489,6 +596,7 @@ enum CrispControlCLIModel {
             case .display: return "List, connect and disconnect the displays Crisp controls."
             case .brightness: return "Read and set brightness and Extra Brightness."
             case .hdr: return "Read and switch HDR on external displays."
+            case .image: return "Read and set Image Adjustment: contrast, gamma, color temperature and the other sliders."
             case .preset: return "List and apply the presets saved in Crisp."
             }
         }
@@ -552,6 +660,21 @@ enum CrispControlCLIModel {
             Verified against the live state after the switch. If the reply is lost, do not
             retry automatically: run 'hdr get' first.
             """),
+        Entry(group: .image, usage: "image get <display>", summary: "Read Image Adjustment as JSON", detail: """
+            The display's id, uuid and name, the values of every setting 'image set' takes,
+            and paused, which is true while Pause in the menu shows the display without its
+            adjustment. 'image set' and 'image reset' reply with the same object.
+            """),
+        Entry(group: .image, usage: "image set <display> <setting> <value>", summary: "Set one Image Adjustment value", detail: """
+            The same as moving that slider in the menu: applied, saved, and it clears the
+            active preset. <setting> is contrast, gamma, gain, temperature, red-gamma,
+            green-gamma, blue-gamma, red-gain, green-gain or blue-gain (-100 to 100, 0 is
+            neutral; temperature -100 is 2000 K, 100 is 12000 K), quantization (2 to 256,
+            256 is off) or invert (on or off). Values out of range are refused, not
+            clamped. The display must be connected.
+            """),
+        Entry(group: .image, usage: "image reset <display>", summary: "Reset Image Adjustment to neutral",
+              detail: "The same as Reset All in the menu."),
         Entry(group: .preset, usage: "preset list", summary: "List presets as JSON", detail: """
             Each preset carries id, name, captures (what applying it changes: resolution,
             brightness, arrangement, imageAdjustment), displays (the uuids it has settings
@@ -711,12 +834,6 @@ enum CrispControlCLIModel {
         if arguments == ["display", "list"] {
             return .init(command: .list)
         }
-        if arguments == ["preset", "list"] {
-            return .init(command: .listPresets)
-        }
-        if arguments.count == 3, arguments[0...1] == ["preset", "apply"], !arguments[2].isEmpty {
-            return .init(command: .applyPreset, selector: arguments[2])
-        }
         if arguments.count == 3, arguments[0...1] == ["brightness", "get"], !arguments[2].isEmpty {
             return .init(command: .getBrightness, selector: arguments[2])
         }
@@ -746,7 +863,30 @@ enum CrispControlCLIModel {
             default: break
             }
         }
-        return connectionRequest(arguments)
+        return imageRequest(arguments) ?? presetRequest(arguments) ?? connectionRequest(arguments)
+    }
+    private static func presetRequest(_ arguments: [String]) -> CrispControlRequest? {
+        if arguments == ["preset", "list"] { return .init(command: .listPresets) }
+        guard arguments.count == 3, arguments[0...1] == ["preset", "apply"], !arguments[2].isEmpty else { return nil }
+        return .init(command: .applyPreset, selector: arguments[2])
+    }
+    private static func imageRequest(_ arguments: [String]) -> CrispControlRequest? {
+        guard arguments.first == "image", arguments.count >= 3, !arguments[2].isEmpty else { return nil }
+        switch (arguments[1], arguments.count) {
+        case ("get", 3): return .init(command: .getImage, selector: arguments[2])
+        case ("reset", 3): return .init(command: .resetImage, selector: arguments[2])
+        case ("set", 5):
+            guard let setting = CrispControlImageSetting(rawValue: arguments[3]) else { return nil }
+            let value: Double?
+            switch (setting, arguments[4]) {
+            case (.invert, "on"): value = 1
+            case (.invert, "off"): value = 0
+            case (.invert, _): value = nil
+            default: value = Double(arguments[4])
+            }
+            return value.map { .init(command: .setImage, selector: arguments[2], setting: setting, value: $0) }
+        default: return nil
+        }
     }
     private static func connectionRequest(_ arguments: [String]) -> CrispControlRequest? {
         guard arguments.count == 3, arguments[0] == "display", !arguments[2].isEmpty else { return nil }

@@ -26,3 +26,36 @@ struct GammaAdjustment: Codable, Equatable {
         quantizationLevels == 256
     }
 }
+
+/// crispctl's names for the adjustment (CrispControlImageSetting): clearer on the
+/// command line than the field names, which the saved state already uses.
+extension GammaAdjustment {
+    func setting(_ setting: CrispControlImageSetting, to value: Double) -> GammaAdjustment {
+        var adjustment = self
+        switch setting {
+        case .contrast: adjustment.contrast = value
+        case .gamma: adjustment.gammaVal = value
+        case .gain: adjustment.gain = value
+        case .temperature: adjustment.colorTemperature = value
+        case .redGamma: adjustment.rGamma = value
+        case .greenGamma: adjustment.gGamma = value
+        case .blueGamma: adjustment.bGamma = value
+        case .redGain: adjustment.rGain = value
+        case .greenGain: adjustment.gGain = value
+        case .blueGain: adjustment.bGain = value
+        case .quantization: adjustment.quantizationLevels = Int(value)
+        case .invert: adjustment.isInverted = value == 1
+        }
+        return adjustment
+    }
+
+    func controlValues(displayID: UInt32, uuid: String, name: String) -> CrispControlImageAdjustment {
+        CrispControlImageAdjustment(
+            displayID: displayID, uuid: uuid, name: name, contrast: contrast, gamma: gammaVal, gain: gain,
+            temperature: colorTemperature,
+            redGamma: rGamma, greenGamma: gGamma, blueGamma: bGamma,
+            redGain: rGain, greenGain: gGain, blueGain: bGain,
+            quantization: quantizationLevels, invert: isInverted, paused: isPaused
+        )
+    }
+}
