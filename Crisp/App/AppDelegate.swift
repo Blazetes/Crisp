@@ -318,6 +318,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 // Re-establish EDR boost overlays (Metal drawables and HDR
                 // mode may not survive sleep).
                 BrightnessBoostService.shared.reapplyAll()
+                self?.renewPanelSurface()
             }
         }
     }
@@ -1033,6 +1034,36 @@ extension AppDelegate {
         p.delegate = self
         p.onCancel = { [weak self] in self?.closePanel() }
         return p
+    }
+
+    /// After a wake, the panel that sat at alpha 0 through the display sleep can
+    /// open with no WindowServer surface (invisible, still takes clicks) or a
+    /// faint one, while Control Center draws fine. An order-out and order-in
+    /// while hidden gives it a fresh surface; the materialize bloom plays at
+    /// alpha 0, as in the warm-up. The log lines say whether a surface was there.
+    private func renewPanelSurface() {
+        guard let p = panel, !isPanelShown else { return }
+        let before = Self.windowHasSurface(p)
+        p.orderOut(nil)
+        p.orderFrontRegardless()
+        p.display()
+        Self.log.notice("panel surface renewed after wake, surface before: \(before, privacy: .public)")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            Self.log.notice("panel surface after renewal: \(Self.windowHasSurface(p), privacy: .public)")
+        }
+    }
+
+    /// Whether WindowServer can make an image of the window (no permission is
+    /// needed for our own windows). Through dlsym because the API is deprecated
+    /// and warnings are errors; ScreenCaptureKit would ask for Screen Recording.
+    private static func windowHasSurface(_ window: NSWindow) -> Bool {
+        typealias CreateImage = @convention(c)
+            (CGRect, CGWindowListOption, CGWindowID, CGWindowImageOption) -> Unmanaged<CGImage>?
+        guard let sym = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "CGWindowListCreateImage") else { return false }
+        let create = unsafeBitCast(sym, to: CreateImage.self)
+        let image = create(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming])
+        image?.release()
+        return image != nil
     }
 }
 
