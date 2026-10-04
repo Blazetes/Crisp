@@ -85,6 +85,7 @@ targets:
       - path: Crisp/Models/PhantomPortCap.swift
       - path: Crisp/Models/DDCVolumeMax.swift
       - path: Crisp/Models/EdgeCrossing.swift
+      - path: Crisp/Models/DDCInputSource.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.crisp.tests

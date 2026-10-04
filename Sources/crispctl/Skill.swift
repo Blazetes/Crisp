@@ -5,7 +5,7 @@ enum CrispControlSkill {
     static let text = #"""
     ---
     name: crispctl
-    description: Control displays on a Mac that runs Crisp through its crispctl command line tool. Use when the user wants to read or set display brightness, switch Extra Brightness or HDR, list displays, disconnect and reconnect a display, change Image Adjustment (contrast, color temperature, gamma), or list and apply saved presets from a script, a shortcut or an agent.
+    description: Control displays on a Mac that runs Crisp through its crispctl command line tool. Use when the user wants to read or set display brightness, switch Extra Brightness or HDR, list displays, disconnect and reconnect a display, switch a monitor's input, change Image Adjustment (contrast, color temperature, gamma), or list and apply saved presets from a script, a shortcut or an agent.
     ---
 
     # crispctl
@@ -37,6 +37,8 @@ enum CrispControlSkill {
 
     `display disconnect|connect|toggle <display>`: the menu's Disconnect Display and Reconnect. Apple Silicon only. A disconnect that would leave no active display is refused. A display that Crisp holds disconnected is gone from every macOS list, so `display list` shows it with `connected:false` and its last-known id: address it by uuid. Asking for the state a display is already in succeeds and changes nothing. The reply can take a few seconds.
 
+    `display input list <display>` and `display input set <display> <input>`: input select over DDC, the menu's Input row. `list` gives `inputs` (each a `value` and a `name`, from what the monitor reports, else a standard list) and `current`, the input this Mac is on, or null when Crisp cannot read it. The first `list` for a monitor reads its capabilities and can take half a minute. `set` takes a name (`HDMI 1`, `hdmi1`, `dp2`, `usb-c`) or a number, decimal (`17`) or hex (`0x11`). The monitor then shows the other computer, and Crisp disconnects the display so macOS frees its space; the reply's `connected` says whether it did (not on the last active display). `display connect <display>` brings it back and switches the monitor to this Mac. A `set` is refused when Crisp cannot read the Mac's input and nobody chose it in the menu.
+
     `image get|set|reset <display>`: Image Adjustment, the software sliders in the menu. `set <display> <setting> <value>` changes one: `contrast`, `gamma`, `gain`, `temperature` (-100 to 100, 0 is neutral; `temperature` -100 is 2000 K warm, 100 is 12000 K cool), `red-gamma`, `green-gamma`, `blue-gamma`, `red-gain`, `green-gain`, `blue-gain` (-100 to 100), `quantization` (2 to 256, 256 is off) or `invert` (`on`/`off`). Out of range is refused, not clamped. It is the same as moving the slider, so it clears the active preset. `reset` is Reset All. Every reply names the display (`displayID`, `uuid`, `name`) and returns all values; `get` also returns `paused`, true while the user has paused the adjustments in the menu. The display must be connected.
 
     `preset list` and `preset apply <preset>`: the presets saved in Crisp. `list` gives each preset's `id`, `name`, `captures` (what applying it changes: `resolution`, `brightness`, `arrangement`, `imageAdjustment`, `hdr`), `displays` (the uuids it has settings for) and `active`. `apply` takes an id or a name in any case; a name two presets share is refused, so use the id. It is the same as clicking the preset in the menu. The reply comes after the preset is applied, and `skippedDisplays` lists the preset's displays that were not connected. An apply while another one runs is refused.
@@ -47,7 +49,7 @@ enum CrispControlSkill {
 
     A preset can change resolution, arrangement and HDR as well as brightness. Only apply a preset the user named.
 
-    A disconnect takes a screen away from the user. Only disconnect a display when the user asked for that display by name or uuid, and never the last one they are looking at.
+    A disconnect takes a screen away from the user. Only disconnect a display when the user asked for that display by name or uuid, and never the last one they are looking at. An input switch takes the screen away the same way: only switch when the user asked for it.
 
     ## Examples
 

@@ -133,6 +133,20 @@ reconnect that landed inside a 6 s volume read). `DDCService.noChannelSince` rem
 a miss for 20 s so a refresh does one walk instead of six, while still picking up a
 monitor that answers late.
 
+## Input switching (#196)
+
+Measured on 2026-10-05 on the AOC Q27G3XMN, with the Mac on one input and a PC on another, through m1ddc (by display UUID, since its display numbers follow the main display) and crispctl.
+
+An input write (VCP 0x60) from the Mac lands also when the Mac is not the active input: with the AOC showing the PC, a write from the Mac switched it back. Many monitors accept DDC only on the active input, so this is the AOC's behavior, not a rule; on such a monitor only the switch away works from Crisp.
+
+While the monitor shows the other source, macOS keeps it online and active the whole time (30 samples over 15 s), so the pointer and new windows can go onto a screen nobody sees. That is the state that stopped `crispctl display poweroff`, which is why `InputSwitchService` disconnects the display after the write. The disconnect takes it out of the list within 0.6 s. A disconnected display has no DDC channel (the m1ddc write failed and its list dropped the AOC), so the way back is Reconnect first, then the write: the channel was back within 0.5 s of the Reconnect, and the AOC stayed on the PC until the write. That write makes the monitor re-link, and macOS loses the display for about 1.5 s before it comes back. So `InputSwitchService.reconnect` writes the Mac's input once, as soon as the Reconnect returns, with no retry and no read back: with the Mac on HDMI and the PC on the DP input (USB-C), the write went out 190 ms after the enable and the AOC re-linked to the Mac about 0.5 s later. One test had the write acked with no switch, but there the Mac was on both inputs at once, so the other input was a second Mac display and not a real source. The case of the Mac on DisplayPort with a second computer is not measured: the AOC has one DP input.
+
+An input with no signal does not hold: the AOC switches to it and back at once, the same from its own OSD, so a test needs a live source on the target input.
+
+Reads: over DisplayPort, 18 of 20 unvalidated 0x60 reads gave the right value, and Crisp's checksum check drops the other two; over HDMI none of the unvalidated reads were right. The AOC replies max 0x200E for 0x60, but other monitors report max 0 for a code with no scale, so reads of 0x60 accept max 0.
+
+The capabilities string (365 bytes on the AOC, `60( 11 12 0F)` for HDMI 1, HDMI 2 and DisplayPort 1) read the same in two runs over DisplayPort, but about 9 of 10 chunk replies were bad: 93 and 192 requests for 13 good chunks. So `DDCService.readCapabilities` sends one chunk per queue turn (brightness keeps flowing between them) with a budget of 400 bad replies, and `InputSwitchService` reads it once per monitor, when its input list is first opened, and keeps the result.
+
 ## Rules of engagement
 
 - Never trust an acked write as proof DDC works; only a checksum-valid

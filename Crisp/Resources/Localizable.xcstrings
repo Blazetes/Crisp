@@ -221,6 +221,70 @@
     "%lld%%" : {
       "shouldTranslate" : false
     },
+    "Another input disconnects this display. Reconnect it here to switch back." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切换到其他输入源会断开此显示器。在这里重新连接即可切换回来。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切換到其他輸入來源會中斷此顯示器的連線。在這裡重新連接即可切換回來。"
+          }
+        }
+      }
+    },
+    "Choose Again" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新选择"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新選擇"
+          }
+        }
+      }
+    },
+    "Crisp could not read which input this Mac is on. Choose it once in the menu." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crisp 无法读取这台 Mac 使用的输入源。请在菜单中选择一次。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crisp 無法讀取這台 Mac 使用的輸入來源。請在選單中選擇一次。"
+          }
+        }
+      }
+    },
+    "Crisp could not read which input this Mac is on. Choose it once." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crisp 无法读取这台 Mac 使用的输入源。请选择一次。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crisp 無法讀取這台 Mac 使用的輸入來源。請選擇一次。"
+          }
+        }
+      }
+    },
     "Cross Unaligned Edges" : {
       "localizations" : {
         "zh-Hans" : {
@@ -233,6 +297,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "跨越未對齊的邊緣"
+          }
+        }
+      }
+    },
+    "Input" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "输入源"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "輸入來源"
+          }
+        }
+      }
+    },
+    "Input %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "输入源 %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "輸入來源 %@"
+          }
+        }
+      }
+    },
+    "Reading the inputs from the monitor…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在从显示器读取输入源…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在從顯示器讀取輸入來源…"
+          }
+        }
+      }
+    },
+    "Set Display Input" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置显示器输入源"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定顯示器輸入來源"
           }
         }
       }
@@ -253,6 +381,54 @@
         }
       }
     },
+    "Switch ${display} to ${input}" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将 ${display} 切换到 ${input}"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將 ${display} 切換到 ${input}"
+          }
+        }
+      }
+    },
+    "Switches a monitor to another input, such as HDMI 1 or 0x11, the same as choosing it in the menu. Reconnect Display switches it back to this Mac." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将显示器切换到其他输入源（例如 HDMI 1 或 0x11），与在菜单中选择它相同。“重新连接显示器”会将它切换回这台 Mac。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將顯示器切換到其他輸入來源（例如 HDMI 1 或 0x11），與在選單中選擇它相同。「重新連接顯示器」會將它切換回這台 Mac。"
+          }
+        }
+      }
+    },
+    "The monitor did not take the input change." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示器没有接受输入源更改。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顯示器沒有接受輸入來源變更。"
+          }
+        }
+      }
+    },
     "The pointer jumps to the nearest display where edges don't line up" : {
       "localizations" : {
         "zh-Hans" : {
@@ -265,6 +441,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在邊緣未對齊處，指標會跳到最近的顯示器"
+          }
+        }
+      }
+    },
+    "This is the only display, so it stays connected while it shows the other input." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这是唯一的显示器，因此在显示其他输入源时仍保持连接。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這是唯一的顯示器，因此在顯示其他輸入來源時仍保持連線。"
           }
         }
       }

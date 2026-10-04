@@ -120,7 +120,7 @@ final class CrispControlServer {
 
     private nonisolated static func changesConnection(_ request: Data) -> Bool {
         switch (try? JSONDecoder().decode(CrispControlRequest.self, from: request))?.command {
-        case .connectDisplay, .disconnectDisplay, .toggleDisplay: return true
+        case .connectDisplay, .disconnectDisplay, .toggleDisplay, .setInput: return true
         default: return false
         }
     }
@@ -238,8 +238,60 @@ final class CrispControlServer {
                 displayID: display.displayID, uuid: display.displayUUID, name: display.name
             )))
         }
+        if let id = result.inputListDisplayID {
+            return await inputList(displayID: id, among: managedDisplays)
+        }
+        if let change = result.inputChange {
+            return await switchInput(change, among: managedDisplays, listed: displays)
+        }
         return CrispControlModel.encode(result.response)
     }
+
+    private func inputList(displayID: UInt32, among managedDisplays: [DisplayInfo]) async -> Data {
+        let service = InputSwitchService.shared
+        guard let display = managedDisplays.first(where: { $0.displayID == displayID }) else {
+            return CrispControlModel.encode(.failure("display not found"))
+        }
+        guard service.isAvailable(for: display) else { return CrispControlModel.encode(.failure(Self.noDDC)) }
+        await service.settle(display)
+        let inputs = service.options(for: display).map { value in
+            CrispControlInput(value: Int(value), name: DDCInputSource.name(for: value) ?? String(format: "Input 0x%02X", value))
+        }
+        return CrispControlModel.encode(.success(inputs: CrispControlInputs(
+            displayID: displayID, uuid: display.displayUUID,
+            current: service.macInput[display.displayUUID].map(Int.init), inputs: inputs
+        )))
+    }
+
+    private func switchInput(
+        _ change: CrispControlInputChange, among managedDisplays: [DisplayInfo], listed: [CrispControlDisplay]
+    ) async -> Data {
+        let service = InputSwitchService.shared
+        guard let display = managedDisplays.first(where: { $0.displayID == change.displayID }),
+              let entry = listed.first(where: { $0.id == change.displayID }) else {
+            return CrispControlModel.encode(.failure("display not found"))
+        }
+        guard service.isAvailable(for: display) else { return CrispControlModel.encode(.failure(Self.noDDC)) }
+        guard let value = DDCInputSource.value(from: change.input) else {
+            return CrispControlModel.encode(.failure(
+                "unknown input '\(change.input)'; use a name such as hdmi1 or a number such as 17 or 0x11"
+            ))
+        }
+        let result = await service.switchInput(display, to: value)
+        displayManager.refreshDisplays()
+        switch result {
+        case .failure(let error):
+            return CrispControlModel.encode(.failure(error.description))
+        case .success(let disconnected):
+            return CrispControlModel.encode(.success(display: CrispControlDisplay(
+                id: entry.id, name: entry.name, brightness: entry.brightness, maxBrightness: entry.maxBrightness,
+                isBuiltin: entry.isBuiltin, uuid: entry.uuid, resolution: entry.resolution,
+                brightnessBackend: entry.brightnessBackend, connected: !disconnected
+            )))
+        }
+    }
+
+    private static let noDDC = "this display does not answer DDC, so Crisp cannot read or switch its input"
 
     private static func listed(_ preset: DisplayPreset) -> CrispControlPreset {
         CrispControlPreset(
@@ -322,7 +374,7 @@ final class CrispControlServer {
         let service = PhysicalDisplayToggleService.shared
         let outcome: Result<Void, PhysicalDisplayToggleService.ToggleError>
         if change.connect {
-            outcome = await service.reconnect(uuid: change.uuid)
+            outcome = await InputSwitchService.shared.reconnect(uuid: change.uuid)
         } else if let display = managedDisplays.first(where: { $0.displayUUID == change.uuid }) {
             outcome = await service.disconnect(display)
         } else {

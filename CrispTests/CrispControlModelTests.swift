@@ -74,6 +74,8 @@ final class CrispControlModelTests: XCTestCase {
                 .init(command: .disconnectDisplay, selector: "DECC7CEF-5E36-4E9B-8F18-CE11AE5902AD")
             ),
             (["display", "toggle", "42"], .init(command: .toggleDisplay, selector: "42")),
+            (["display", "input", "list", "42"], .init(command: .listInputs, selector: "42")),
+            (["display", "input", "set", "42", "HDMI 1"], .init(command: .setInput, selector: "42", input: "HDMI 1")),
             (["preset", "list"], .init(command: .listPresets)),
             (["preset", "apply", "Night"], .init(command: .applyPreset, selector: "Night"))
         ]
@@ -107,7 +109,7 @@ final class CrispControlModelTests: XCTestCase {
         for word in ["help", "version", "crispctl <command>"] {
             XCTAssertTrue(CrispControlCLIModel.help.contains(word), word)
         }
-        XCTAssertEqual(CrispControlCLIModel.entries.count, 15)
+        XCTAssertEqual(CrispControlCLIModel.entries.count, 17)
         for entry in CrispControlCLIModel.entries {
             let columns = entry.columns
             XCTAssertTrue(CrispControlCLIModel.help.contains("  " + columns.command + " "), entry.usage)
@@ -187,9 +189,11 @@ final class CrispControlModelTests: XCTestCase {
     func testOnlyBoundedTransitionCommandsGetLongerReceiveTimeouts() {
         XCTAssertEqual(CrispControlCLIModel.receiveTimeoutSeconds(for: .setBrightnessBoost), 5)
         XCTAssertEqual(CrispControlCLIModel.receiveTimeoutSeconds(for: .setHDR), 6)
-        for command in [CrispControlRequest.Command.connectDisplay, .disconnectDisplay, .toggleDisplay, .applyPreset] {
+        for command in [CrispControlRequest.Command.connectDisplay, .disconnectDisplay, .toggleDisplay, .applyPreset, .setInput] {
             XCTAssertEqual(CrispControlCLIModel.receiveTimeoutSeconds(for: command), 30)
         }
+        // The first list for a monitor reads its capabilities, up to half a minute.
+        XCTAssertEqual(CrispControlCLIModel.receiveTimeoutSeconds(for: .listInputs), 60)
         for command in [
             CrispControlRequest.Command.list, .getBrightness, .setBrightness, .getBrightnessBoost, .getHDR
         ] {

@@ -240,6 +240,28 @@ struct ReconnectDisplayIntent: AppIntent {
     }
 }
 
+struct SetDisplayInputIntent: AppIntent {
+    static let title: LocalizedStringResource = "Set Display Input"
+    // swiftlint:disable:next line_length
+    static let description = IntentDescription("Switches a monitor to another input, such as HDMI 1 or 0x11, the same as choosing it in the menu. Reconnect Display switches it back to this Mac.")
+
+    @Parameter(title: "Display")
+    var display: DisplayEntity
+
+    @Parameter(title: "Input")
+    var input: String
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Switch \(\.$display) to \(\.$input)")
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        _ = try await send(.init(command: .setInput, selector: display.id, input: input))
+        return .result()
+    }
+}
+
 struct SetImageAdjustmentIntent: AppIntent {
     static let title: LocalizedStringResource = "Set Image Adjustment"
     // swiftlint:disable:next line_length
