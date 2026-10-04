@@ -74,6 +74,7 @@ struct SavePresetForm: View {
     @State private var includeBrightness: Bool = true
     @State private var includeArrangement: Bool = true
     @State private var includeImageAdjustment: Bool = false
+    @State private var includeHDR: Bool = false
     /// Edit mode only: when on, Save re-captures current values instead of stored ones.
     @State private var recaptureValues: Bool = false
     /// Global shortcut for this preset, held here until Save like name and icon
@@ -100,11 +101,13 @@ struct SavePresetForm: View {
         _includeArrangement = State(initialValue: editing?.includesArrangement ?? true)
         _includeImageAdjustment = State(initialValue: editing?.includesImageAdjustment
                                         ?? PresetService.shared.anyImageAdjustment)
+        _includeHDR = State(initialValue: editing?.includesHDR ?? false)
         _recordedShortcut = State(initialValue: editing?.shortcut)
     }
 
     private var nothingSelected: Bool {
         !includeResolution && !includeBrightness && !includeArrangement && !includeImageAdjustment
+            && !includeHDR
     }
 
     /// Stored resolution shown inline only for a single display (clean and
@@ -251,6 +254,11 @@ struct SavePresetForm: View {
                 }
                 CaptureToggleRow(icon: "slider.horizontal.3", color: .teal,
                                  label: "Image Adjustment", isOn: $includeImageAdjustment)
+                // Only where it can capture something: a display with the HDR row.
+                if editing?.includesHDR == true || PresetService.shared.anyHDRDisplay {
+                    CaptureToggleRow(icon: "tv.fill", color: .purple,
+                                     label: "HDR", isOn: $includeHDR)
+                }
             }
 
             ShortcutRecorderRow(label: "Shortcut", shortcut: $recordedShortcut)
@@ -326,10 +334,11 @@ struct SavePresetForm: View {
             // Preserves stored values for captures left unchanged.
             PresetService.shared.editPreset(
                 id: editing.id, name: name, icon: selectedIcon, colorName: selectedColor,
-                includeResolution: includeResolution,
-                includeBrightness: includeBrightness,
-                includeArrangement: includeArrangement,
-                includeImageAdjustment: includeImageAdjustment
+                captures: Set([(PresetCapture.resolution, includeResolution),
+                               (.brightness, includeBrightness),
+                               (.arrangement, includeArrangement),
+                               (.imageAdjustment, includeImageAdjustment),
+                               (.hdr, includeHDR)].filter(\.1).map(\.0))
             )
             // Opt-in: refresh the stored values to the current display state.
             if recaptureValues {
@@ -342,7 +351,8 @@ struct SavePresetForm: View {
                 includeResolution: includeResolution,
                 includeBrightness: includeBrightness,
                 includeArrangement: includeArrangement,
-                includeImageAdjustment: includeImageAdjustment
+                includeImageAdjustment: includeImageAdjustment,
+                includeHDR: includeHDR
             )
             preset.colorName = selectedColor
             PresetService.shared.addPreset(preset)

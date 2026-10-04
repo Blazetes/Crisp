@@ -112,7 +112,7 @@ struct CrispControlRequest: Codable, Equatable {
     }
 }
 /// A saved preset as crispctl lists it. `captures` names what applying it changes
-/// (resolution, brightness, arrangement, imageAdjustment); `displays` are the uuids it
+/// (resolution, brightness, arrangement, imageAdjustment, hdr); `displays` are the uuids it
 /// has settings for; `active` is true for the preset last applied until a manual change.
 struct CrispControlPreset: Codable, Equatable {
     let id: String
@@ -677,8 +677,9 @@ enum CrispControlCLIModel {
               detail: "The same as Reset All in the menu."),
         Entry(group: .preset, usage: "preset list", summary: "List presets as JSON", detail: """
             Each preset carries id, name, captures (what applying it changes: resolution,
-            brightness, arrangement, imageAdjustment), displays (the uuids it has settings
-            for) and active, which is true for the preset last applied until a manual change.
+            brightness, arrangement, imageAdjustment, hdr), displays (the uuids it has
+            settings for) and active, which is true for the preset last applied until a
+            manual change.
             """),
         Entry(group: .preset, usage: "preset apply <preset>", summary: "Apply a preset", detail: """
             <preset> is an id or a name from 'preset list'. Names match in any case; a name
