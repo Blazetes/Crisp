@@ -63,7 +63,9 @@ class ArrangementService {
     }
 
     /// Applies origins in one atomic transaction inside `CGHelpers.runWithTimeout` so
-    /// `CGCompleteDisplayConfiguration` cannot block WindowServer IPC forever.
+    /// `CGCompleteDisplayConfiguration` cannot block WindowServer IPC forever. Every caller is
+    /// a user action, so it commits `.permanently`: with `.forSession` macOS put its own
+    /// stored arrangement back at the next login (#193).
     private func applyOrigins(_ origins: [(id: CGDirectDisplayID, x: Int, y: Int)]) async -> Bool {
         await CGHelpers.runWithTimeout(seconds: 10, fallback: false) {
             var config: CGDisplayConfigRef?
@@ -72,7 +74,7 @@ class ArrangementService {
             for o in origins {
                 CGConfigureDisplayOrigin(cfg, o.id, Int32(o.x), Int32(o.y))
             }
-            let result = CGCompleteDisplayConfiguration(cfg, .forSession)
+            let result = CGCompleteDisplayConfiguration(cfg, .permanently)
             if result != .success {
                 CGCancelDisplayConfiguration(cfg)
                 return false
