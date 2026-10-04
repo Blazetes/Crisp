@@ -96,7 +96,8 @@ final class PresetService: ObservableObject, @unchecked Sendable {
             includeResolution: existing.includesResolution,
             includeBrightness: existing.includesBrightness,
             includeArrangement: existing.includesArrangement,
-            includeImageAdjustment: existing.includesImageAdjustment
+            includeImageAdjustment: existing.includesImageAdjustment,
+            includeHDR: existing.includesHDR
         )
         presets[index].displays = captured.displays
         savePresets()
@@ -108,19 +109,15 @@ final class PresetService: ObservableObject, @unchecked Sendable {
     /// re-captured when its inclusion actually changed, so captures left alone keep
     /// their stored values across a rename.
     func editPreset(id: UUID, name: String, icon: String, colorName: String?,
-                    includeResolution: Bool, includeBrightness: Bool, includeArrangement: Bool,
-                    includeImageAdjustment: Bool) {
+                    captures: Set<PresetCapture>) {
         guard let index = presets.firstIndex(where: { $0.id == id }) else { return }
         presets[index].name = name
         presets[index].icon = icon
         presets[index].colorName = colorName
         savePresets()
-        for (capture, want) in [(PresetCapture.resolution, includeResolution),
-                                (.brightness, includeBrightness),
-                                (.arrangement, includeArrangement),
-                                (.imageAdjustment, includeImageAdjustment)]
-        where presets[index].includes(capture) != want {
-            setCapture(id: id, capture, included: want)
+        for capture in PresetCapture.allCases
+        where presets[index].includes(capture) != captures.contains(capture) {
+            setCapture(id: id, capture, included: captures.contains(capture))
         }
     }
 
@@ -131,37 +128,29 @@ final class PresetService: ObservableObject, @unchecked Sendable {
         let displays = DisplayManagerAccessor.shared.displays
         presets[index].displays = presets[index].displays.map { entry in
             var e = entry
-            let live = displays.first(where: { $0.displayUUID == entry.displayUUID && $0.isOnline })
+            guard included else {
+                e.clear(capture)
+                return e
+            }
+            guard let live = displays.first(where: { $0.displayUUID == entry.displayUUID && $0.isOnline }) else {
+                return e
+            }
             switch capture {
             case .resolution:
-                if included, let live {
-                    let mode = live.currentDisplayMode
-                    e.width = mode?.width ?? live.pixelWidth
-                    e.height = mode?.height ?? live.pixelHeight
-                    e.isHiDPI = mode?.isHiDPI ?? false
-                    e.refreshRate = mode?.refreshRate
-                } else if !included {
-                    e.width = nil; e.height = nil; e.isHiDPI = nil; e.refreshRate = nil
-                }
+                let mode = live.currentDisplayMode
+                e.width = mode?.width ?? live.pixelWidth
+                e.height = mode?.height ?? live.pixelHeight
+                e.isHiDPI = mode?.isHiDPI ?? false
+                e.refreshRate = mode?.refreshRate
             case .brightness:
-                if included, let live {
-                    e.brightness = live.brightness / 100.0
-                } else if !included {
-                    e.brightness = nil
-                }
+                e.brightness = live.brightness / 100.0
             case .arrangement:
-                if included, let live {
-                    e.arrangementX = live.bounds.origin.x
-                    e.arrangementY = live.bounds.origin.y
-                } else if !included {
-                    e.arrangementX = nil; e.arrangementY = nil
-                }
+                e.arrangementX = live.bounds.origin.x
+                e.arrangementY = live.bounds.origin.y
             case .imageAdjustment:
-                if included, let live {
-                    e.imageAdjustment = imageAdjustment(of: live)
-                } else if !included {
-                    e.imageAdjustment = nil
-                }
+                e.imageAdjustment = imageAdjustment(of: live)
+            case .hdr:
+                e.hdr = hdr(of: live)
             }
             return e
         }
@@ -227,6 +216,12 @@ final class PresetService: ObservableObject, @unchecked Sendable {
                 }
             }
 
+            // After the mode, as the disconnect restore does, and before brightness:
+            // the switch moves brightness between DDC and software dimming.
+            if let hdr = entry.hdr, BrightnessBoostService.shared.isHDREnabled(for: display) != hdr {
+                await BrightnessBoostService.shared.setHDRPreference(hdr, for: display)
+            }
+
             // Convert 0.0-1.0 to the 0-100 range BrightnessService uses; fades over 0.5s
             // instead of snapping.
             if let brightness = entry.brightness {
@@ -262,7 +257,8 @@ final class PresetService: ObservableObject, @unchecked Sendable {
                              includeResolution: Bool = true,
                              includeBrightness: Bool = true,
                              includeArrangement: Bool = true,
-                             includeImageAdjustment: Bool = false) -> DisplayPreset {
+                             includeImageAdjustment: Bool = false,
+                             includeHDR: Bool = false) -> DisplayPreset {
         let displays = DisplayManagerAccessor.shared.displays
         let entries: [DisplayPresetEntry] = displays.compactMap { display in
             guard display.isOnline else { return nil }
@@ -276,7 +272,8 @@ final class PresetService: ObservableObject, @unchecked Sendable {
                 brightness: includeBrightness ? display.brightness / 100.0 : nil,
                 arrangementX: includeArrangement ? display.bounds.origin.x : nil,
                 arrangementY: includeArrangement ? display.bounds.origin.y : nil,
-                imageAdjustment: includeImageAdjustment ? imageAdjustment(of: display) : nil
+                imageAdjustment: includeImageAdjustment ? imageAdjustment(of: display) : nil,
+                hdr: includeHDR ? hdr(of: display) : nil
             )
         }
         return DisplayPreset(name: name, icon: icon, displays: entries)
@@ -288,6 +285,17 @@ final class PresetService: ObservableObject, @unchecked Sendable {
         var adjustment = GammaService.shared.loadSavedState(for: display) ?? GammaAdjustment()
         adjustment.isPaused = false
         return adjustment
+    }
+
+    /// The HDR switch as a preset stores it; nil for a display without the HDR row.
+    private func hdr(of display: DisplayInfo) -> Bool? {
+        let boost = BrightnessBoostService.shared
+        return boost.isEligibleForHDRToggle(display) ? boost.isHDREnabled(for: display) : nil
+    }
+
+    /// Whether any online display has the HDR row: the save form shows the HDR capture only then.
+    var anyHDRDisplay: Bool {
+        DisplayManagerAccessor.shared.displays.contains { $0.isOnline && hdr(of: $0) != nil }
     }
 
     /// Whether any online display has an Image Adjustment: the save form's default
