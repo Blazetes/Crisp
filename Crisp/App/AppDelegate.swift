@@ -647,6 +647,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }) {
                 ImageBodyBlock(display: display, state: state)
             })
+            blocks.append(detail("dinput-head", isOpen: detailOpen, live: true) {
+                InputHeadBlock(display: display, state: state)
+            })
+            blocks.append(detail("dinput-body", isOpen: {
+                detailOpen() && state.inputOpenIDs.contains(id)
+            }) {
+                InputBodyBlock(display: display, state: state)
+            })
             blocks.append(detail("dtail", isOpen: detailOpen) {
                 DetailTailBlock(display: display)
             })
@@ -989,7 +997,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             clickMonitor = nil
         }
     }
+}
 
+// MARK: - Panel window
+
+extension AppDelegate {
     private func makePanel() -> MenuPanel {
         let p = MenuPanel(
             contentRect: .zero,

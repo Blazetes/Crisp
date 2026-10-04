@@ -32,6 +32,9 @@ final class PhysicalDisplayToggleService: ObservableObject {
         /// Whether this was the built-in panel, captured at disconnect time. Optional so
         /// records written before this field decode instead of throwing away the whole list.
         var isBuiltin: Bool?
+        /// The input to switch the monitor back to on Reconnect, when it left through an
+        /// input switch (InputSwitchService). Optional for the same reason as isBuiltin.
+        var returnInput: UInt16?
         var id: String { uuid }
     }
 
@@ -231,7 +234,7 @@ final class PhysicalDisplayToggleService: ObservableObject {
     /// Disconnects a physical display and records a snapshot for later reconnect. Refuses if it
     /// would leave zero active displays, so the user can never black out their only screen.
     @discardableResult
-    func disconnect(_ display: DisplayInfo) async -> Result<Void, ToggleError> {
+    func disconnect(_ display: DisplayInfo, returnInput: UInt16? = nil) async -> Result<Void, ToggleError> {
         guard isSupported else { return .failure(.unsupportedPlatform) }
         let displayID = display.displayID
         if wouldLeaveNoActiveDisplay(displayID) { return .failure(.wouldLeaveNoActiveDisplay) }
@@ -243,7 +246,8 @@ final class PhysicalDisplayToggleService: ObservableObject {
             name: display.name,
             width: display.pixelWidth,
             height: display.pixelHeight,
-            isBuiltin: display.isBuiltin
+            isBuiltin: display.isBuiltin,
+            returnInput: returnInput
         )
 
         Self.log.notice("disconnect requested: \(display.displayUUID, privacy: .public) id \(displayID, privacy: .public)")

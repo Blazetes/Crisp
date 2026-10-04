@@ -367,12 +367,29 @@ final class DDCService: ObservableObject, @unchecked Sendable {
 
         let maxVal = (UInt16(replyBuf[6]) << 8) | UInt16(replyBuf[7])
         let curVal = (UInt16(replyBuf[8]) << 8) | UInt16(replyBuf[9])
-        // A zero max is also invalid (would make every write 0); reject it.
-        guard maxVal > 0 else {
+        // A zero max is also invalid (would make every write 0); reject it. Input select
+        // has no scale, and some monitors report max 0 for it.
+        guard maxVal > 0 || command == DDCInputSource.vcp else {
             return fail("reply carries max 0")
         }
         Self.log.notice("read \(Self.hex(command), privacy: .public) display \(displayID, privacy: .public): ok \(curVal, privacy: .public)/\(maxVal, privacy: .public)")
         return (current: curVal, max: maxVal)
+    }
+
+    enum CapabilitiesChunk { case data([UInt8]), bad, noChannel }
+
+    /// One chunk of the capabilities string (DDCCapabilities has the framing).
+    private func arm64CapabilitiesChunk(displayID: CGDirectDisplayID, offset: Int) -> CapabilitiesChunk {
+        guard let avService = findAVService(for: displayID) else { return .noChannel }
+        var request = DDCCapabilities.request(offset: offset)
+        guard IOAVServiceWriteI2C(avService, 0x37, 0x51, &request, UInt32(request.count)) == kIOReturnSuccess else {
+            return .bad
+        }
+        Thread.sleep(forTimeInterval: 0.05)
+        var reply = [UInt8](repeating: 0, count: DDCCapabilities.replyLength)
+        guard IOAVServiceReadI2C(avService, 0x37, 0x51, &reply, UInt32(reply.count)) == kIOReturnSuccess,
+              let data = DDCCapabilities.data(fromReply: reply, offset: offset) else { return .bad }
+        return .data(data)
     }
 #endif
 
@@ -652,7 +669,7 @@ final class DDCService: ObservableObject, @unchecked Sendable {
                     guard self.ddcChecksum(destAddress: 0x50, bytes: Array(rb[0...9])) == rb[10] else { return }
                     let maxVal = (UInt16(rb[6]) << 8) | UInt16(rb[7])
                     let curVal = (UInt16(rb[8]) << 8) | UInt16(rb[9])
-                    guard maxVal > 0 else { return }
+                    guard maxVal > 0 || command == DDCInputSource.vcp else { return }
                     result = (current: curVal, max: maxVal)
                 }
             }
@@ -773,6 +790,74 @@ final class DDCService: ObservableObject, @unchecked Sendable {
             Self.log.notice("read \(Self.hex(command), privacy: .public) display \(displayID, privacy: .public): no valid reply in 3 attempts")
             completion(nil)
         }
+    }
+
+    // MARK: - Input select (#196)
+
+    /// The monitor's current input from a validated read, or nil. Never from the cache:
+    /// the input changes outside Crisp (the monitor's OSD, the other computer).
+    func readInput(displayID: CGDirectDisplayID) async -> UInt16? {
+        cacheLock.withLock { vcpCache[displayID]?[DDCInputSource.vcp] = nil }
+        return await withCheckedContinuation { continuation in
+            readAsync(displayID: displayID, command: DDCInputSource.vcp) { result in
+                continuation.resume(returning: result.map { DDCInputSource.current(fromReply: $0.current) })
+            }
+        }
+    }
+
+    func writeInput(displayID: CGDirectDisplayID, value: UInt16) async -> Bool {
+        await withCheckedContinuation { continuation in
+            writeAsync(displayID: displayID, command: DDCInputSource.vcp, value: value) { continuation.resume(returning: $0) }
+        }
+    }
+
+    /// The capabilities string, one chunk per queue turn so brightness and volume keep
+    /// flowing between chunks. Some monitors fail most chunk replies (about 9 in 10 on
+    /// the AOC Q27G3XMN, docs/ddc-notes.md), so a bad chunk is asked again within a
+    /// budget. nil when the budget runs out, when there is no channel, and on Intel,
+    /// where the input list falls back to the standard one.
+    func readCapabilities(displayID: CGDirectDisplayID) async -> String? {
+#if arch(arm64)
+        var bytes: [UInt8] = []
+        var bad = 0
+        while bytes.count < 4096 {
+            let offset = bytes.count
+            let chunk = await withCheckedContinuation { continuation in
+                operationQueues.queue(for: displayID).async {
+                    continuation.resume(returning: self.arm64CapabilitiesChunk(displayID: displayID, offset: offset))
+                }
+            }
+            switch chunk {
+            case .noChannel:
+                return nil
+            case .bad:
+                bad += 1
+                guard bad < 400 else {
+                    Self.log.notice("capabilities display \(displayID, privacy: .public): gave up after \(bad, privacy: .public) bad replies at byte \(offset, privacy: .public)")
+                    return nil
+                }
+            case .data(let data):
+                guard !data.isEmpty else {
+                    Self.log.notice("capabilities display \(displayID, privacy: .public): \(bytes.count, privacy: .public) bytes, \(bad, privacy: .public) bad replies")
+                    return String(bytes: bytes.filter { $0 != 0 }, encoding: .isoLatin1)
+                }
+                bytes += data
+            }
+        }
+        return String(bytes: bytes.filter { $0 != 0 }, encoding: .isoLatin1)
+#else
+        return nil
+#endif
+    }
+
+    /// The input write that switches a reconnected monitor back to this Mac. Its
+    /// channel is back by the time the reconnect returns (docs/ddc-notes.md), so this
+    /// only clears a no-channel miss from while it was away and writes once.
+    func writeInputAfterReconnect(displayID: CGDirectDisplayID, value: UInt16) async -> Bool {
+#if arch(arm64)
+        avServiceLock.withLock { _ = noChannelSince.removeValue(forKey: displayID) }
+#endif
+        return await writeInput(displayID: displayID, value: value)
     }
 
     /// Reads a batch of common VCP codes asynchronously.

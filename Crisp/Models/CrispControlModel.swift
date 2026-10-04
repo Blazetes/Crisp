@@ -80,6 +80,8 @@ struct CrispControlRequest: Codable, Equatable {
         case getImage
         case setImage
         case resetImage
+        case listInputs
+        case setInput
     }
 
     let command: Command
@@ -93,6 +95,8 @@ struct CrispControlRequest: Codable, Equatable {
     /// `setImage`: which setting, and its new value (invert: 0 or 1).
     let setting: CrispControlImageSetting?
     let value: Double?
+    /// `setInput`: the input as a person typed it, a name or a number.
+    let input: String?
     init(
         command: Command,
         display: UInt32? = nil,
@@ -100,7 +104,8 @@ struct CrispControlRequest: Codable, Equatable {
         selector: String? = nil,
         enabled: Bool? = nil,
         setting: CrispControlImageSetting? = nil,
-        value: Double? = nil
+        value: Double? = nil,
+        input: String? = nil
     ) {
         self.command = command
         self.display = display
@@ -109,7 +114,25 @@ struct CrispControlRequest: Codable, Equatable {
         self.enabled = enabled
         self.setting = setting
         self.value = value
+        self.input = input
     }
+}
+/// One input of a monitor (#196): the VCP 0x60 value and its connector name.
+struct CrispControlInput: Codable, Equatable {
+    let value: Int
+    let name: String
+}
+/// A display's inputs as crispctl lists them. `current` is the input this Mac is on,
+/// nil when Crisp cannot read it and nobody chose it in the menu.
+struct CrispControlInputs: Codable, Equatable {
+    let displayID: UInt32
+    let uuid: String
+    let current: Int?
+    let inputs: [CrispControlInput]
+}
+struct CrispControlInputChange: Equatable {
+    let displayID: UInt32
+    let input: String
 }
 /// A saved preset as crispctl lists it. `captures` names what applying it changes
 /// (resolution, brightness, arrangement, imageAdjustment, hdr); `displays` are the uuids it
@@ -191,6 +214,7 @@ struct CrispControlResponse: Codable, Equatable {
     /// was applied to them.
     let skippedDisplays: [String]?
     let image: CrispControlImageAdjustment?
+    let inputs: CrispControlInputs?
     let error: String?
 
     init(
@@ -203,6 +227,7 @@ struct CrispControlResponse: Codable, Equatable {
         preset: CrispControlPreset? = nil,
         skippedDisplays: [String]? = nil,
         image: CrispControlImageAdjustment? = nil,
+        inputs: CrispControlInputs? = nil,
         error: String? = nil
     ) {
         self.ok = ok
@@ -214,6 +239,7 @@ struct CrispControlResponse: Codable, Equatable {
         self.preset = preset
         self.skippedDisplays = skippedDisplays
         self.image = image
+        self.inputs = inputs
         self.error = error
     }
     static func success() -> Self { Self(ok: true) }
@@ -225,6 +251,7 @@ struct CrispControlResponse: Codable, Equatable {
     static func success(hdr: CrispControlHDRState) -> Self { Self(ok: true, hdr: hdr) }
     static func success(presets: [CrispControlPreset]) -> Self { Self(ok: true, presets: presets) }
     static func success(image: CrispControlImageAdjustment) -> Self { Self(ok: true, image: image) }
+    static func success(inputs: CrispControlInputs) -> Self { Self(ok: true, inputs: inputs) }
     static func success(preset: CrispControlPreset, skippedDisplays: [String]) -> Self {
         Self(ok: true, preset: preset, skippedDisplays: skippedDisplays)
     }
@@ -258,6 +285,10 @@ struct CrispControlResult {
     /// The id of the one preset `applyPreset` resolved to.
     let presetToApply: String?
     let imageChange: CrispControlImageChange?
+    /// `listInputs`: the display to list, which the server answers once the monitor's
+    /// capabilities are read. `setInput`: the switch to make.
+    let inputListDisplayID: UInt32?
+    let inputChange: CrispControlInputChange?
 
     init(
         _ response: CrispControlResponse,
@@ -266,7 +297,9 @@ struct CrispControlResult {
         _ hdrChange: CrispControlHDRChange?,
         _ connectionChange: CrispControlConnectionChange? = nil,
         presetToApply: String? = nil,
-        imageChange: CrispControlImageChange? = nil
+        imageChange: CrispControlImageChange? = nil,
+        inputListDisplayID: UInt32? = nil,
+        inputChange: CrispControlInputChange? = nil
     ) {
         self.response = response
         self.brightnessChange = brightnessChange
@@ -275,6 +308,8 @@ struct CrispControlResult {
         self.connectionChange = connectionChange
         self.presetToApply = presetToApply
         self.imageChange = imageChange
+        self.inputListDisplayID = inputListDisplayID
+        self.inputChange = inputChange
     }
 }
 enum CrispControlModel {
@@ -362,7 +397,33 @@ enum CrispControlModel {
             return handlePreset(request, presets: presets)
         case .getImage, .setImage, .resetImage:
             return handleImage(request, displays: displays, imageAdjustment: imageAdjustment)
+        case .listInputs, .setInput:
+            return handleInput(request, displays: displays)
         }
+    }
+
+    /// Inputs are read and written over the display's DDC channel, which only a
+    /// connected external has.
+    private static func handleInput(_ request: CrispControlRequest, displays: [CrispControlDisplay]) -> CrispControlResult {
+        guard hasDisplaySelector(request) else {
+            return .init(.failure("display is required"), nil, nil, nil)
+        }
+        guard let display = target(of: request, in: displays) else {
+            return .init(.failure("display not found"), nil, nil, nil)
+        }
+        guard !display.isBuiltin else {
+            return .init(.failure("the built-in display has no inputs"), nil, nil, nil)
+        }
+        guard display.connected ?? true else {
+            return .init(.failure("display is not connected; 'display connect' switches it back to this Mac"), nil, nil, nil)
+        }
+        guard request.command == .setInput else {
+            return .init(.success(), nil, nil, nil, inputListDisplayID: display.id)
+        }
+        guard let input = request.input, !input.isEmpty else {
+            return .init(.failure("input is required"), nil, nil, nil)
+        }
+        return .init(.success(), nil, nil, nil, inputChange: .init(displayID: display.id, input: input))
     }
 
     private static func handleBrightnessBoost(
@@ -593,7 +654,7 @@ enum CrispControlCLIModel {
         }
         var description: String {
             switch self {
-            case .display: return "List, connect and disconnect the displays Crisp controls."
+            case .display: return "List, connect and disconnect the displays Crisp controls, and switch their inputs."
             case .brightness: return "Read and set brightness and Extra Brightness."
             case .hdr: return "Read and switch HDR on external displays."
             case .image: return "Read and set Image Adjustment: contrast, gamma, color temperature and the other sliders."
@@ -643,6 +704,19 @@ enum CrispControlCLIModel {
         Entry(group: .display, usage: "display toggle <display>", summary: "Disconnect if connected, connect if not", detail: """
             The reply comes after the window server has answered. If it is lost, run
             'display list' before retrying: the display may already have changed state.
+            """),
+        Entry(group: .display, usage: "display input list <display>", summary: "List a monitor's inputs as JSON", detail: """
+            Each input carries value and name, from the list the monitor reports, or a
+            standard list when it reports none. current is the input this Mac is on, or
+            null when Crisp cannot read it. The first call for a monitor reads its list,
+            which can take half a minute.
+            """),
+        Entry(group: .display, usage: "display input set <display> <input>", summary: "Switch a monitor to another input", detail: """
+            <input> is a name (HDMI 1, hdmi1, dp2, usb-c) or a number, decimal (17) or
+            hex (0x11). The same as choosing it in the menu: the display is then
+            disconnected, and 'display connect' switches it back to this Mac. On the last
+            active display it switches without the disconnect. The reply comes after the
+            window server has answered.
             """),
         Entry(group: .brightness, usage: "brightness get <display>", summary: "Read brightness and its live maximum", detail: ""),
         Entry(group: .brightness, usage: "brightness set <display> <percent>", summary: "Set brightness", detail: """
@@ -779,7 +853,9 @@ enum CrispControlCLIModel {
         case .setHDR: return 6
         // The window server answers inside the app's 10 s wrapper, but the DDC hold
         // ahead of the transaction can wait 15 s and the mode restore after it 3 s.
-        case .connectDisplay, .disconnectDisplay, .toggleDisplay: return 30
+        case .connectDisplay, .disconnectDisplay, .toggleDisplay, .setInput: return 30
+        // The first list for a monitor reads its capabilities chunk by chunk.
+        case .listInputs: return 60
         // A resolution or arrangement change waits for the reconfiguration to land.
         case .applyPreset: return 30
         default: return 2
@@ -890,6 +966,13 @@ enum CrispControlCLIModel {
         }
     }
     private static func connectionRequest(_ arguments: [String]) -> CrispControlRequest? {
+        if arguments.count == 4, arguments[0...2] == ["display", "input", "list"], !arguments[3].isEmpty {
+            return .init(command: .listInputs, selector: arguments[3])
+        }
+        if arguments.count == 5, arguments[0...2] == ["display", "input", "set"], !arguments[3].isEmpty,
+           !arguments[4].isEmpty {
+            return .init(command: .setInput, selector: arguments[3], input: arguments[4])
+        }
         guard arguments.count == 3, arguments[0] == "display", !arguments[2].isEmpty else { return nil }
         switch arguments[1] {
         case "connect": return .init(command: .connectDisplay, selector: arguments[2])

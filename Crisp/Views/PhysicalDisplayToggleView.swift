@@ -99,7 +99,7 @@ struct ReconnectDisplaysSection: View {
         guard !busyUUIDs.contains(record.uuid) else { return }
         busyUUIDs.insert(record.uuid)
         Task { @MainActor in
-            _ = await service.reconnect(uuid: record.uuid)
+            _ = await InputSwitchService.shared.reconnect(uuid: record.uuid)
             displayManager.refreshDisplays()
             busyUUIDs.remove(record.uuid)
         }

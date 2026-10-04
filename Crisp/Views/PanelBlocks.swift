@@ -21,6 +21,7 @@ final class PanelSectionState: ObservableObject {
     @Published var refreshOpenIDs: Set<CGDirectDisplayID> = []
     @Published var profileOpenIDs: Set<CGDirectDisplayID> = []
     @Published var imageOpenIDs: Set<CGDirectDisplayID> = []
+    @Published var inputOpenIDs: Set<CGDirectDisplayID> = []
 
     /// Collapse every section so the panel reopens fresh; called once hidden.
     func collapseAll() {
@@ -34,6 +35,7 @@ final class PanelSectionState: ObservableObject {
         refreshOpenIDs.removeAll()
         profileOpenIDs.removeAll()
         imageOpenIDs.removeAll()
+        inputOpenIDs.removeAll()
     }
 
     /// Drop state for displays that disappeared (disconnect, reconfiguration).
@@ -44,6 +46,7 @@ final class PanelSectionState: ObservableObject {
         refreshOpenIDs.formIntersection(valid)
         profileOpenIDs.formIntersection(valid)
         imageOpenIDs.formIntersection(valid)
+        inputOpenIDs.formIntersection(valid)
     }
 
     /// Binding into one of the per-display sets, for ExpandableRow chevrons.
