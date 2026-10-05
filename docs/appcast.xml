@@ -1,8 +1,59 @@
-<?xml version="1.0" standalone="yes"?><!-- sparkle-sign-warning:
+<?xml version="1.0" standalone="yes"?>
+<!-- sparkle-sign-warning:
 IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
---><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+-->
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>Crisp</title>
+        <item>
+            <title>1.7.0</title>
+            <pubDate>Tue, 06 Oct 2026 00:47:17 +0200</pubDate>
+            <link>https://github.com/didriksg/Crisp/releases</link>
+            <sparkle:fullReleaseNotesLink>https://github.com/didriksg/Crisp/releases</sparkle:fullReleaseNotesLink>
+            <sparkle:version>1.7.0</sparkle:version>
+            <sparkle:shortVersionString>1.7.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown"><![CDATA[Crisp 1.7.0 can switch a monitor's input, keep the built-in off while you're docked, and run presets, brightness, HDR and Image Adjustment from Shortcuts. Presets can now carry HDR and Image Adjustment, the arrangement and resolution you pick survive a reboot, and on macOS 27 Crisp follows the new system look. It also fixes the panel after Show Desktop and after a display sleep, a black screen on a MacBook Air undocked while asleep, and a colour profile lost on an Image Adjustment reset.
+
+## New
+
+- **Input switching.** Each external display with DDC gets an Input row, listing the inputs the monitor reports or the standard list when it reports none. Choosing another input switches the monitor and disconnects it in Crisp, because macOS keeps a monitor that shows another computer online and your pointer and new windows would go onto it. Reconnect brings it back and switches it to this Mac. Crisp reads which input the Mac is on before it switches, and if the monitor can't say, you pick it once. On a Mac with one display the input switches and the display stays connected. The same is in crispctl (`display input list` and `display input set`) and in Shortcuts (Set Display Input), where a number also works for monitors with their own codes. (#196)
+- **The built-in off while docked.** A Disconnect on the built-in now survives an undock: the built-in comes back when you unplug, and goes off again a few seconds after the same monitor is connected. A monitor that wasn't connected when you clicked leaves it alone. Auto-Disconnect Built-in in Tools does the same for any external, with no click. Reconnect on the built-in stops either one. (#202)
+- **Shortcuts actions.** Apply Crisp Preset, Set and Get Display Brightness, Set Extra Brightness, Set Display HDR, Disconnect and Reconnect Display, Set and Reset Image Adjustment, and Set Display Input. A Time of Day automation that runs Apply Crisp Preset switches your displays between a day and a night setup. (#188)
+- **More in presets.** A preset can now include Image Adjustment and each display's HDR switch, each with its own switch under Captures. Presets saved before leave both alone. Applying a preset fades the adjustment over half a second, the same as brightness. (#188, #198)
+- **More in crispctl.** `preset list` and `preset apply`, `image get`, `image set` and `image reset`, and the input commands above. `crispctl skill show` prints a skill file that teaches an AI coding agent the commands, and `crispctl skill install claude` or `codex` puts it where that agent looks.
+- **Cross Unaligned Edges.** Where displays of different sizes meet, macOS stops the pointer on the part of an edge with no display next to it. This switch in Tools moves the pointer to the nearest point on the next display instead. It's off by default and needs no Accessibility access. Window drags still stop at the edge.
+- **Brightness on your own shortcuts.** Brightness Up and Brightness Down in Settings > Keyboard Shortcuts, for keyboards without brightness keys or with F1 and F2 taken. They step like the keys and need no Accessibility access. (#160)
+- **Quarter steps.** Hold Option and Shift with the brightness or volume keys to move a quarter of a step, as macOS does on the built-in. (#172, #175)
+- **Studio Display.** Crisp sets an Apple Studio Display's brightness through macOS, as it does the built-in, instead of over DDC, so the slider and the keys cover the whole range. (#169)
+- **Traditional Chinese.** Macs set to Traditional Chinese get it automatically. To run Crisp in another language than the rest of the Mac, choose it under System Settings > General > Language & Region > Applications.
+- **The macOS 27 look.** On macOS 27 the OSD, the panel and the menu bar item follow the new system style, and the menu bar item lights up while the panel or the OSD is open. macOS 26 and older are unchanged.
+
+## Fixed
+
+- The arrangement and the resolution you pick stay after a logout or reboot. Crisp committed them for the session only, so macOS put back its own at the next login. (#180, #193)
+- The panel no longer opens off screen after a click on the wallpaper. Show Desktop swept it aside with the app windows. (#186)
+- After a display sleep, the panel could open invisible or faint on one display. Crisp now gives the closed panel a new surface at the end of each wake.
+- A MacBook Air undocked while asleep no longer wakes to a black screen. (#195)
+- Resetting Image Adjustment no longer removes the colour profile you picked, and on a display Crisp dims in software, the screen no longer jumps to full brightness.
+- A second click on the menu bar item closes the panel instead of flashing it. (#177)
+- Volume on a monitor that reports an oversized volume range, the Dell S2725DSM for one, steps again instead of going only between mute and full. (#162)
+- On Macs with an A-series chip, the MacBook Neo for one, the smooth scaling switch is greyed out with a line that says why: macOS refuses every size it would add. (#174)
+- A monitor whose DDC has stopped answering no longer holds up a disconnect for half a minute. (#204)
+- The Keep Awake dot sits on the menu bar icon again on macOS 27.
+
+## Contributors
+
+- @Yangmoooo: quarter steps for the volume keys (#175)
+- @Dr8pus: the second click that closes the panel (#177)
+- @shaw-baobao: resolutions that survive a reboot (#180)
+
+## Supporting Crisp
+
+Crisp is free and always will be. The nicest thank-you costs nothing: star the repo or tell a friend. If you'd like to help cover the $99/year Apple fee that keeps every build signed and notarized, there's [GitHub Sponsors](https://github.com/sponsors/didriksg), [Ko-fi](https://ko-fi.com/didriksg), or [Afdian (爱发电)](https://ifdian.net/a/didriksg). Thank you @rebelvg, @kuldipmaharjan, @arnor-ingthorsson and @BarryBarrywu for chipping in toward keeping Crisp signed and notarized.
+]]></description>
+            <enclosure url="https://github.com/didriksg/Crisp/releases/download/v1.7.0/Crisp.dmg" length="5062530" type="application/octet-stream" sparkle:edSignature="YwImsTqnn/LfcTCF87KlIz3/TWcwEmFEqoahogpshxAz47bpE16Xpo3h3uKM4/ZoZ1hAg5D6G/yK8H7jc6jlDw=="/>
+        </item>
         <item>
             <title>1.6.0</title>
             <pubDate>Tue, 08 Sep 2026 23:44:51 +0200</pubDate>
@@ -57,10 +108,11 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 
 Crisp is free and always will be. The nicest thank-you costs nothing: star the repo or tell a friend. If you'd like to help cover the $99/year Apple fee that keeps every build signed and notarized, there's [GitHub Sponsors](https://github.com/sponsors/didriksg), [Ko-fi](https://ko-fi.com/didriksg), or [Afdian (爱发电)](https://ifdian.net/a/didriksg). Thank you @rebelvg, @kuldipmaharjan, @arnor-ingthorsson and @BarryBarrywu for chipping in toward keeping Crisp signed and notarized.
 ]]></description>
-            <enclosure url="https://github.com/didriksg/Crisp/releases/download/v1.6.0/Crisp.dmg" length="4766696" type="application/octet-stream" sparkle:edSignature="dgqRmGY5U7mhTDmtztHjhT0QJTNQCYASvtME/KoHZdbfMcpPwMRAXT58XJYAnC1aHMHV078ci75PGDH00AwRBQ=="></enclosure>
+            <enclosure url="https://github.com/didriksg/Crisp/releases/download/v1.6.0/Crisp.dmg" length="4766696" type="application/octet-stream" sparkle:edSignature="dgqRmGY5U7mhTDmtztHjhT0QJTNQCYASvtME/KoHZdbfMcpPwMRAXT58XJYAnC1aHMHV078ci75PGDH00AwRBQ=="/>
         </item>
     </channel>
-</rss><!-- sparkle-signatures:
-edSignature: p9H53SZSsOmIsHKloaThIcsFN2L+ObkdoSNBUFH04ZhBPkWQJoZ4XDPB5j/tfunmxUC4cDFfJIMXtiKWorcgAw==
-length: 8477
+</rss>
+<!-- sparkle-signatures:
+edSignature: dGJDnJrBN751fbnYRb16OBlwfpAG9Vnnm2PpKtUmkWkNuqyolTEKecYDXw1SSawAZ7T2Ql08EuY6Ttj3IU/FDg==
+length: 15196
 -->
