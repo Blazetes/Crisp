@@ -97,6 +97,7 @@ same subtree, which is what proximity matching relies on instead.
 | --- | --- | --- |
 | Garbage reply passes weak validation | Bogus max poisons the write scale; slider saturates partway (100/255 = top 61% dead) | Checksum validation on every reply |
 | Read-hammering a fragile controller | Controller degrades into garbage/wedge | Read quarantine, 6 strikes, 10 min expiry |
+| Deaf channel (no ack) answers each read attempt after about 6 s | The arrival probe's 3 attempts per VCP code held a disconnect's DDC hold for 33 s (U2412M, 2026-10-05) | One failed attempt over 3 s quarantines reads at once; the capabilities read stops when reads are quarantined |
 | Display IDs reshuffled, no removal event | Channel map crossed: each slider drives the OTHER monitor; both look dead | Full map flush on every reconfiguration, identity re-match, per-display generation token discards in-flight work for the IDs whose channel actually changed |
 | One display's I2C blocks for seconds | Every other display's slider stalls with it | Per-display serial queues; coalesced latest-wins writes; immediate software preview while the write is outstanding |
 | Channel goes deaf (no ack) | Writes fail cleanly | 3-failure latch to full-range software gamma; recovery on reconnect |
@@ -131,7 +132,7 @@ on every DDC op kept that engine busy for most of a refresh, and WindowServer's 
 freezes behind it the same way (issue #33's shape; measured once as a 6 s freeze on a
 reconnect that landed inside a 6 s volume read). `DDCService.noChannelSince` remembers
 a miss for 20 s so a refresh does one walk instead of six, while still picking up a
-monitor that answers late.
+monitor that answers late. A read attempt that fails after more than 3 s quarantines that display's reads at once for the same reason (`deafAttemptMs`): on 2026-10-05 a deaf U2412M's arrival probe queued 0x62 and 0x60 at 3 attempts each, every attempt took about 6 s, and the disconnect behind it waited 33 s. The reconfiguration flush still clears the quarantine, because a replug is recovery step 2 and IDs reshuffle, so a deaf channel costs one 6 s attempt per display change.
 
 ## Input switching (#196)
 
