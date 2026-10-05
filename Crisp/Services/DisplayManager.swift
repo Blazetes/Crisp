@@ -246,6 +246,7 @@ class DisplayManager: ObservableObject {
 
         // Drops any physical-disconnect record whose display came back online.
         PhysicalDisplayToggleService.shared.reconcile()
+        PhysicalDisplayToggleService.shared.reapplyParkedIfDocked()
         Task { await PhysicalDisplayToggleService.shared.recoverStrandedSoftReconnect() }
         MirroredModeService.shared.recoverStrandedMirrors()
         // A physical unplug bypasses disconnect()'s last-screen guard. See docs/display-notes.md
