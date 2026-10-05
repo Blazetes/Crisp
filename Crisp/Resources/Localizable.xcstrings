@@ -237,6 +237,22 @@
         }
       }
     },
+    "Auto-Disconnect Built-in" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动断开内建显示器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動中斷內建顯示器連線"
+          }
+        }
+      }
+    },
     "Choose Again" : {
       "localizations" : {
         "zh-Hans" : {
@@ -457,6 +473,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "這是唯一的顯示器，因此在顯示其他輸入來源時仍保持連線。"
+          }
+        }
+      }
+    },
+    "Turns the built-in display off while an external display is connected" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连接外接显示器时关闭内建显示器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連接外接顯示器時關閉內建顯示器"
           }
         }
       }

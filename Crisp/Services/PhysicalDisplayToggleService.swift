@@ -15,6 +15,7 @@ final class PhysicalDisplayToggleService: ObservableObject {
     static let shared = PhysicalDisplayToggleService()
     private init() {
         loadDesired()
+        loadParked()
     }
 
     /// Set by DisplayManager at launch. The restore below needs a DisplayInfo to read and put
@@ -35,6 +36,9 @@ final class PhysicalDisplayToggleService: ObservableObject {
         /// The input to switch the monitor back to on Reconnect, when it left through an
         /// input switch (InputSwitchService). Optional for the same reason as isBuiltin.
         var returnInput: UInt16?
+        /// For the built-in: UUIDs of the externals lit when it was disconnected, so a parked
+        /// record knows which dock to re-apply on (#202). Optional for the same reason as isBuiltin.
+        var companions: [String]?
         var id: String { uuid }
     }
 
@@ -240,6 +244,13 @@ final class PhysicalDisplayToggleService: ObservableObject {
         let displayID = display.displayID
         if wouldLeaveNoActiveDisplay(displayID) { return .failure(.wouldLeaveNoActiveDisplay) }
 
+        // A new click adds this dock's externals to the ones a parked record already knew.
+        var companions: [String]?
+        if display.isBuiltin {
+            let externals = viewableActiveDisplays().filter { $0 != displayID }.map { uuid(for: $0) }
+            let known = parked?.uuid == display.displayUUID ? parked?.companions ?? [] : []
+            companions = Array(Set(externals + known))
+        }
         // Snapshot BEFORE disabling, afterwards the display is gone from the normal APIs.
         let snapshot = DisconnectedDisplay(
             uuid: display.displayUUID,
@@ -248,7 +259,8 @@ final class PhysicalDisplayToggleService: ObservableObject {
             width: display.pixelWidth,
             height: display.pixelHeight,
             isBuiltin: display.isBuiltin,
-            returnInput: returnInput
+            returnInput: returnInput,
+            companions: companions
         )
 
         Self.log.notice("disconnect requested: \(display.displayUUID, privacy: .public) id \(displayID, privacy: .public)")
@@ -258,6 +270,7 @@ final class PhysicalDisplayToggleService: ObservableObject {
             disconnected.removeAll { $0.uuid == snapshot.uuid }
             disconnected.append(snapshot)
             saveDesired()
+            if parked?.uuid == snapshot.uuid { setParked(nil) }
             Task { [weak self] in await self?.restoreStates(otherStates) }
         }
         return result
@@ -334,8 +347,10 @@ final class PhysicalDisplayToggleService: ObservableObject {
     }
 
     /// Reconnects a previously disconnected display and drops it from the disconnected set.
+    /// `byUser` is false only for the blackout rescue; a user's Reconnect of the built-in holds
+    /// the Tools switch off until the next undock.
     @discardableResult
-    func reconnect(uuid: String) async -> Result<Void, ToggleError> {
+    func reconnect(uuid: String, byUser: Bool = true) async -> Result<Void, ToggleError> {
         guard isSupported else { return .failure(.unsupportedPlatform) }
         guard let record = disconnected.first(where: { $0.uuid == uuid }) else {
             return .failure(.displayNotFound)
@@ -345,6 +360,9 @@ final class PhysicalDisplayToggleService: ObservableObject {
         Self.log.notice("reconnect requested: \(uuid, privacy: .public) id \(targetID, privacy: .public)")
         reconnectInFlight.insert(uuid)
         defer { reconnectInFlight.remove(uuid) }
+        if byUser, record.isBuiltin == true, SettingsService.shared.disconnectBuiltinWhenDocked {
+            standDownUntilUndock = true
+        }
         let result = await setEnabled(true, displayID: targetID)
         if case .success = result {
             // Not proof of recovery (see verifyBackOnline); record drops either way, since
@@ -568,7 +586,7 @@ final class PhysicalDisplayToggleService: ObservableObject {
 
     /// Battery presence is the lid-independent laptop test for Clamshell Sleep: the built-in
     /// panel can vanish from the display list entirely while the lid is closed.
-    private static let hasBattery: Bool = {
+    static let hasBattery: Bool = {
         let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))
         guard service != 0 else { return false }
         IOObjectRelease(service)
@@ -708,6 +726,7 @@ final class PhysicalDisplayToggleService: ObservableObject {
             // change failed, see ToggleError.timedOut) the record stays for the next refresh to
             // decide, since #33 shows a commit can still land 29.5s later.
             Self.log.notice("record dropped for \(recordUUID, privacy: .public) id \(liveID, privacy: .public): still lit")
+            if refused { park(disconnected[idx]) }
             disconnected.remove(at: idx)
         } else {
             // Off (regardless of what the transaction reported) is decided the same way:
@@ -829,7 +848,8 @@ final class PhysicalDisplayToggleService: ObservableObject {
             for (record, _) in candidates {
                 // macOS re-probes on its own and often wins the race; stop as soon as anything's back.
                 guard self.phantomAwareActiveDisplayCount() == 0 else { return }
-                guard case .success = await self.reconnect(uuid: record.uuid) else { continue }
+                guard case .success = await self.reconnect(uuid: record.uuid, byUser: false) else { continue }
+                self.park(record)
                 // Not proof of recovery (see verifyBackOnline): only enumeration ends the
                 // restore; otherwise move to the next record.
                 for _ in 0..<20 {
@@ -838,6 +858,95 @@ final class PhysicalDisplayToggleService: ObservableObject {
                 }
             }
         }
+    }
+
+    // MARK: - Parked record and the Tools switch (#202)
+
+    /// A built-in Disconnect the rescue (or a refused re-apply) had to undo, kept so the next
+    /// dock with one of its externals switches the built-in off again. Reconnect on the
+    /// built-in ends it, because a fresh disconnect replaces it and a user reconnect never
+    /// parks. See docs/display-notes.md (parked record).
+    private var parked: DisconnectedDisplay?
+    private let parkedKey = "crisp.PhysicalParkedDisconnect"
+    private var parkedReapplyInFlight = false
+    /// Set by a Reconnect of the built-in while the Tools switch is on, so the switch leaves it
+    /// lit until the next undock. ponytail: memory only, so a relaunch while docked turns it
+    /// off again; persist it if that bites.
+    private var standDownUntilUndock = false
+
+    private func park(_ record: DisconnectedDisplay) {
+        guard record.isBuiltin == true, record.companions?.isEmpty == false else { return }
+        Self.log.notice("parked disconnect for \(record.uuid, privacy: .public), re-applies with \(record.companions?.count ?? 0, privacy: .public) external(s)")
+        setParked(record)
+    }
+
+    /// Turning the Tools switch off also ends what it set up.
+    func clearParked() {
+        setParked(nil)
+        standDownUntilUndock = false
+    }
+
+    /// Called on every refresh and when the Tools switch turns on. Waits 4 s (a display link
+    /// handshake runs 2 to 4 s) and looks again before acting, so a dock that is still
+    /// settling does not count.
+    func reapplyParkedIfDocked() {
+        if standDownUntilUndock, !viewableActiveDisplays().contains(where: { CGDisplayIsBuiltin($0) != 1 }) {
+            standDownUntilUndock = false
+        }
+        guard isSupported, !parkedReapplyInFlight, let target = dockTarget(),
+              dockedExternal(builtinUUID: target.uuid, companions: target.companions) != nil else { return }
+        parkedReapplyInFlight = true
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard let self else { return }
+            defer { self.parkedReapplyInFlight = false }
+            guard let now = self.dockTarget(), now.uuid == target.uuid,
+                  let external = self.dockedExternal(builtinUUID: now.uuid, companions: now.companions),
+                  let display = self.displayManager?.displays.first(where: { $0.displayUUID == now.uuid })
+            else { return }
+            let source = now.companions == nil ? "the switch" : "the parked record"
+            Self.log.notice("built-in \(now.uuid, privacy: .public) off again by \(source, privacy: .public): \(external, privacy: .public) is active")
+            if case .failure(let error) = await self.disconnect(display) {
+                Self.log.notice("built-in \(now.uuid, privacy: .public) off again refused: \(error.description, privacy: .public)")
+            }
+        }
+    }
+
+    /// The built-in to switch off and which externals count: any (nil) with the Tools switch
+    /// on, otherwise the parked record's own.
+    private func dockTarget() -> (uuid: String, companions: Set<String>?)? {
+        if SettingsService.shared.disconnectBuiltinWhenDocked {
+            guard !standDownUntilUndock,
+                  let builtin = displayManager?.displays.first(where: { $0.isBuiltin }) else { return nil }
+            return (builtin.displayUUID, nil)
+        }
+        guard let parked else { return nil }
+        return (parked.uuid, Set(parked.companions ?? []))
+    }
+
+    /// An external that counts, when the built-in is lit and the rescue's own phantom-aware
+    /// count sees at least one display besides it: a #112 phantom at wake carries a real
+    /// external's UUID and must not switch the built-in off.
+    private func dockedExternal(builtinUUID: String, companions: Set<String>?) -> String? {
+        guard let builtinID = onlineDisplayIDs().first(where: { uuid(for: $0) == builtinUUID }),
+              CGDisplayIsActive(builtinID) != 0,
+              phantomAwareActiveDisplayCount() >= 2 else { return nil }
+        return viewableActiveDisplays().filter { $0 != builtinID }.map { uuid(for: $0) }
+            .first { companions?.contains($0) ?? true }
+    }
+
+    private func setParked(_ record: DisconnectedDisplay?) {
+        parked = record
+        if let record, let data = try? JSONEncoder().encode(record) {
+            UserDefaults.standard.set(data, forKey: parkedKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: parkedKey)
+        }
+    }
+
+    private func loadParked() {
+        guard let data = UserDefaults.standard.data(forKey: parkedKey) else { return }
+        parked = try? JSONDecoder().decode(DisconnectedDisplay.self, from: data)
     }
 
     // MARK: - Persistence
