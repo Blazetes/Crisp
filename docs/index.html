@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="google-site-verification" content="Pb7coFWl3eF3E_6mT6jdH6sbJYJ5VY3iLoSKt-bNy2w">
 <title>Crisp: Free BetterDisplay &amp; Lunar alternative for macOS</title>
-<meta name="description" content="Crisp is a free, open-source, lightweight alternative to BetterDisplay and Lunar for macOS: DDC brightness, HiDPI scaling, presets, virtual displays, and arrangement, all in the menu bar, plus crispctl, a command line tool for the terminal, scripts and Apple Shortcuts.">
+<meta name="description" content="Crisp is a free, open-source, lightweight alternative to BetterDisplay and Lunar for macOS: DDC brightness, HiDPI scaling, presets, virtual displays, and arrangement, all in the menu bar, plus Shortcuts actions and crispctl, a command line tool for the terminal and scripts.">
 <meta property="og:title" content="Crisp: Free BetterDisplay &amp; Lunar alternative for macOS">
 <meta property="og:description" content="A free, open-source alternative to BetterDisplay and Lunar: DDC brightness, HiDPI scaling, presets, virtual displays, and arrangement, all in the menu bar, plus a command line tool.">
 <meta property="og:image" content="https://crispmac.app/og-card.png">
@@ -22,7 +22,7 @@
 <link rel="alternate" hreflang="x-default" href="https://crispmac.app/">
 <link rel="icon" href="icon.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Crisp","operatingSystem":"macOS 14+","applicationCategory":"UtilitiesApplication","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://crispmac.app/","downloadUrl":"https://github.com/didriksg/Crisp/releases/latest/download/Crisp.dmg","screenshot":"https://crispmac.app/screenshot.png","featureList":["HiDPI scaled resolutions on any external monitor","DDC/CI hardware brightness and volume control","Brightness keys for external displays","Extra Brightness using HDR and XDR headroom","Display presets with keyboard shortcuts","Display arrangement and main display switching","Virtual displays","ICC profiles, HDR toggle, gamma and gain","crispctl command line tool for the terminal, shell scripts and Apple Shortcuts"],"softwareLicense":"https://github.com/didriksg/Crisp/blob/main/LICENSE","author":{"@type":"Person","name":"Didrik Galteland","url":"https://github.com/didriksg"}}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Crisp","operatingSystem":"macOS 14+","applicationCategory":"UtilitiesApplication","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://crispmac.app/","downloadUrl":"https://github.com/didriksg/Crisp/releases/latest/download/Crisp.dmg","screenshot":"https://crispmac.app/screenshot.png","featureList":["HiDPI scaled resolutions on any external monitor","DDC/CI hardware brightness and volume control","Brightness keys for external displays","Extra Brightness using HDR and XDR headroom","Display presets with keyboard shortcuts and HDR","Display arrangement and main display switching","Virtual displays","ICC profiles, HDR toggle, gamma and gain","Input switching over DDC","Actions for the Shortcuts app","crispctl command line tool for the terminal and shell scripts"],"softwareLicense":"https://github.com/didriksg/Crisp/blob/main/LICENSE","author":{"@type":"Person","name":"Didrik Galteland","url":"https://github.com/didriksg"}}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"VideoObject","name":"Crisp menu bar demo","description":"A tour of Crisp, a free macOS menu bar app for HiDPI scaling, DDC brightness, presets and display arrangement.","thumbnailUrl":"https://crispmac.app/screenshot.png","uploadDate":"2026-07-31T12:00:00+02:00","contentUrl":"https://crispmac.app/demo.mp4","width":1920,"height":1080}
@@ -74,16 +74,19 @@
       <div class="grid">
         <div class="card reveal"><h3>HiDPI on any display</h3><p>Retina-style scaled resolutions on external monitors, sharp instead of blurry or undersized, automatic on 2K+ and always at the panel's full refresh rate.</p></div>
         <div class="card reveal"><h3>Smooth scaling</h3><p>Fine-tune how large everything looks in small steps, well beyond the handful of scaled sizes macOS offers. The flexible scaling people install BetterDisplay for, built in.</p></div>
-        <div class="card reveal"><h3>Brightness everywhere</h3><p>Hardware DDC control with software fallback, and brightness keys that dim the display under your cursor, all displays, or a subset.</p></div>
+        <div class="card reveal"><h3>Brightness everywhere</h3><p>Hardware DDC control with software fallback, and brightness keys that dim the display under your cursor, all displays, or a subset, or shortcuts of your own.</p></div>
         <div class="card reveal"><h3>Extra Brightness</h3><p>Push XDR MacBooks and HDR monitors past 100% by unlocking their HDR brightness reserve. The feature BetterDisplay sells as brightness upscaling, free.</p></div>
         <div class="card reveal"><h3>Monitor volume</h3><p>Control the built-in speakers of external monitors over DDC, with a slider per display and the keyboard volume keys when the monitor is your audio output.</p></div>
-        <div class="card reveal"><h3>Presets</h3><p>Save whole display setups, resolution, brightness, arrangement, and apply them in one click.</p></div>
-        <div class="card reveal"><h3>Keyboard shortcuts</h3><p>Give any preset a global shortcut, plus one for toggling HiDPI on the display under your pointer. No Accessibility permission needed.</p></div>
-        <div class="card reveal"><h3>Arrangement</h3><p>Drag-to-arrange canvas and one-click main display switching.</p></div>
+        <div class="card reveal"><h3>Presets</h3><p>Save whole display setups, resolution, brightness, arrangement, image adjustment and HDR, and apply them in one click, or on a schedule with Shortcuts.</p></div>
+        <div class="card reveal"><h3>Shortcuts</h3><p>Apply a preset, set brightness, HDR, image adjustment or a monitor's input, or disconnect a display, as actions in Apple's Shortcuts app. A Time of Day automation switches your displays between a day and a night setup.</p></div>
+        <div class="card reveal"><h3>Keyboard shortcuts</h3><p>Give any preset a global shortcut, plus shortcuts for brightness up and down and for toggling HiDPI on the display under your pointer. No Accessibility permission needed.</p></div>
+        <div class="card reveal"><h3>Arrangement</h3><p>Drag-to-arrange canvas, one-click main display switching, and a pointer that crosses the edges where displays of different sizes don't line up.</p></div>
+        <div class="card reveal"><h3>Disconnect displays</h3><p>Turn a display off and back on from the menu, and keep the built-in off while you're docked. Apple Silicon only.</p></div>
+        <div class="card reveal"><h3>Input switching</h3><p>Switch a monitor to another input over DDC, a second computer on HDMI for instance, and back to this Mac from the menu.</p></div>
         <div class="card reveal"><h3>Native toggles</h3><p>Flip macOS Dark Mode, Night Shift, and True Tone right from the panel, no System Settings trip.</p></div>
         <div class="card reveal"><h3>Color</h3><p>ICC profile switching, HDR on/off per display, plus gamma, contrast, and gain adjustment.</p></div>
         <div class="card reveal"><h3>Virtual displays</h3><p>Create HiDPI virtual screens for streaming, sidecar setups, or headless Macs.</p></div>
-        <div class="card reveal"><h3>Command line</h3><p>crispctl ships inside the app: read and set brightness, HDR and Extra Brightness, or connect and disconnect a display, from the terminal, a script, or an Apple Shortcut.</p></div>
+        <div class="card reveal"><h3>Command line</h3><p>crispctl ships inside the app: brightness, HDR and Extra Brightness, image adjustment, presets, a monitor's input, and connecting or disconnecting a display, from the terminal or a script.</p></div>
         <div class="card reveal"><h3>Extras</h3><p>Combined brightness slider, auto brightness sync, keep awake, notch hiding, launch at login.</p></div>
       </div>
     </div>
@@ -129,8 +132,8 @@
           <p>macOS 14 (Sonoma) or later, on both Apple Silicon and Intel Macs. A few extras, like disconnecting a display from the menu, are Apple Silicon only.</p>
         </details>
         <details>
-          <summary>Can I control my displays from the terminal or a script?</summary>
-          <p>Yes. Crisp ships a command line tool, <code>crispctl</code>, inside the app, and a switch in Settings links it into <code>/usr/local/bin</code>. From the terminal, a shell script, or an Apple Shortcut you can list displays, read and set brightness, switch HDR and Extra Brightness, and connect or disconnect a display, by display id or UUID.</p>
+          <summary>Can I control my displays from Shortcuts, the terminal or a script?</summary>
+          <p>Yes. Crisp ships a command line tool, <code>crispctl</code>, inside the app, and a switch in Settings links it into <code>/usr/local/bin</code>. From the terminal or a shell script you can list displays, read and set brightness, switch HDR and Extra Brightness, change image adjustment, apply a preset, switch a monitor's input, and connect or disconnect a display, by display id or UUID. The same controls are actions in the Shortcuts app, so a Time of Day automation can switch presets for day and night.</p>
         </details>
         <details>
           <summary>How is Crisp different from BetterDisplay and Lunar?</summary>

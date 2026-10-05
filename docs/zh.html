@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Crisp：BetterDisplay 和 Lunar 的免费开源平替（macOS 显示器管理）</title>
-<meta name="description" content="Crisp 是 BetterDisplay 和 Lunar 的免费开源平替：一个轻量的 macOS 菜单栏 App，集成 DDC 亮度、HiDPI 缩放、预设、虚拟显示器和排列，连它们的部分收费功能也免费；还内置 crispctl 命令行工具，可以在终端、脚本和快捷指令里控制显示器。">
+<meta name="description" content="Crisp 是 BetterDisplay 和 Lunar 的免费开源平替：一个轻量的 macOS 菜单栏 App，集成 DDC 亮度、HiDPI 缩放、预设、虚拟显示器和排列，连它们的部分收费功能也免费；还支持“快捷指令”，并内置 crispctl 命令行工具，可以在终端和脚本里控制显示器。">
 <meta property="og:title" content="Crisp：BetterDisplay 和 Lunar 的免费开源平替">
 <meta property="og:description" content="免费开源的 macOS 菜单栏工具：DDC 亮度、HiDPI 缩放、预设、虚拟显示器、排列，一个面板全搞定，还有命令行工具。">
 <meta property="og:image" content="https://crispmac.app/og-card-zh.png">
@@ -21,7 +21,7 @@
 <link rel="alternate" hreflang="x-default" href="https://crispmac.app/">
 <link rel="icon" href="icon.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Crisp","operatingSystem":"macOS 14+","applicationCategory":"UtilitiesApplication","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://crispmac.app/zh.html","downloadUrl":"https://github.com/didriksg/Crisp/releases/latest/download/Crisp.dmg","screenshot":"https://crispmac.app/screenshot-zh.png","featureList":["给任意外接显示器补上 HiDPI 缩放分辨率","DDC/CI 硬件亮度和音量控制","用键盘亮度键控制外接显示器","额外亮度：利用 HDR 和 XDR 亮度余量","显示器预设与全局快捷键","显示器排列与主显示器切换","虚拟显示器","ICC 描述文件、HDR 开关、伽马与增益","crispctl 命令行工具，支持终端、脚本和快捷指令"],"softwareLicense":"https://github.com/didriksg/Crisp/blob/main/LICENSE","author":{"@type":"Person","name":"Didrik Galteland","url":"https://github.com/didriksg"}}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Crisp","operatingSystem":"macOS 14+","applicationCategory":"UtilitiesApplication","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://crispmac.app/zh.html","downloadUrl":"https://github.com/didriksg/Crisp/releases/latest/download/Crisp.dmg","screenshot":"https://crispmac.app/screenshot-zh.png","featureList":["给任意外接显示器补上 HiDPI 缩放分辨率","DDC/CI 硬件亮度和音量控制","用键盘亮度键控制外接显示器","额外亮度：利用 HDR 和 XDR 亮度余量","显示器预设（含 HDR）与全局快捷键","显示器排列与主显示器切换","虚拟显示器","ICC 描述文件、HDR 开关、伽马与增益","通过 DDC 切换输入源","“快捷指令”操作","crispctl 命令行工具，支持终端和脚本"],"softwareLicense":"https://github.com/didriksg/Crisp/blob/main/LICENSE","author":{"@type":"Person","name":"Didrik Galteland","url":"https://github.com/didriksg"}}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"VideoObject","name":"Crisp 菜单栏演示","description":"Crisp 是一个免费的 macOS 菜单栏工具，支持 HiDPI 缩放、DDC 亮度、预设和显示器排列，这是功能演示。","thumbnailUrl":"https://crispmac.app/screenshot-zh.png","uploadDate":"2026-07-31T12:00:00+02:00","contentUrl":"https://crispmac.app/demo.mp4","width":1920,"height":1080}
@@ -73,16 +73,19 @@
       <div class="grid">
         <div class="card reveal"><h3>任意显示器都能开 HiDPI</h3><p>给外接显示器补上 Retina 级的缩放分辨率，不再发虚或太小，2K 及以上自动配好，且始终跑满面板刷新率。</p></div>
         <div class="card reveal"><h3>平滑缩放</h3><p>以更小的步进微调界面大小，远超 macOS 默认的那几档。很多人当初装 BetterDisplay，就是为了这种灵活缩放，现在内建了。</p></div>
-        <div class="card reveal"><h3>哪块屏都能调亮度</h3><p>外接屏走 DDC 硬件控制，不支持的用软件兜底；键盘亮度键可作用在光标所在的屏、全部屏或你指定的几块。</p></div>
+        <div class="card reveal"><h3>哪块屏都能调亮度</h3><p>外接屏走 DDC 硬件控制，不支持的用软件兜底；键盘亮度键可作用在光标所在的屏、全部屏或你指定的几块，也可以用自定义快捷键。</p></div>
         <div class="card reveal"><h3>额外亮度</h3><p>解锁 HDR 亮度余量，把 XDR MacBook 和 HDR 显示器的亮度推过 100%。BetterDisplay 把这个功能放在 Pro 里卖，Crisp 免费。</p></div>
         <div class="card reveal"><h3>显示器音量</h3><p>通过 DDC 调外接显示器自带音箱的音量，每块屏一个滑块；当显示器是当前音频输出时，键盘音量键直接生效。</p></div>
-        <div class="card reveal"><h3>预设</h3><p>把分辨率、亮度、排列存成一套，一键切换。</p></div>
-        <div class="card reveal"><h3>键盘快捷键</h3><p>给任意预设分配一个全局快捷键，另有一个快捷键用来切换光标所在显示器的 HiDPI。不需要辅助功能权限。</p></div>
-        <div class="card reveal"><h3>排列</h3><p>拖拽摆位、一键切换主显示器。</p></div>
+        <div class="card reveal"><h3>预设</h3><p>把分辨率、亮度、排列、图像调整和 HDR 存成一套，一键切换，也可以用快捷指令定时切换。</p></div>
+        <div class="card reveal"><h3>快捷指令</h3><p>在“快捷指令”App 里应用预设，设置亮度、HDR、图像调整或显示器输入源，或断开某块显示器。用“特定时间”自动化就能按白天和夜晚切换显示器设置。</p></div>
+        <div class="card reveal"><h3>键盘快捷键</h3><p>给任意预设分配一个全局快捷键，另有快捷键用来调高、调低亮度，以及切换光标所在显示器的 HiDPI。不需要辅助功能权限。</p></div>
+        <div class="card reveal"><h3>排列</h3><p>拖拽摆位、一键切换主显示器；不同尺寸的显示器边缘没对齐时，指针也能直接跨过去。</p></div>
+        <div class="card reveal"><h3>断开显示器</h3><p>在菜单里关闭、重新打开某块显示器；接上扩展坞时还能让内建屏保持关闭。仅限 Apple 芯片。</p></div>
+        <div class="card reveal"><h3>切换输入源</h3><p>通过 DDC 把显示器切到另一个输入源，比如接在 HDMI 上的另一台电脑，再从菜单切回这台 Mac。</p></div>
         <div class="card reveal"><h3>系统开关</h3><p>深色模式、夜览、原彩显示，直接在面板里切，不用进系统设置。</p></div>
         <div class="card reveal"><h3>色彩</h3><p>ICC 配置切换、每块屏独立开关 HDR，外加 gamma、对比度、增益微调。</p></div>
         <div class="card reveal"><h3>虚拟显示器</h3><p>创建 HiDPI 虚拟屏，用于直播、随航或无头 Mac。</p></div>
-        <div class="card reveal"><h3>命令行</h3><p>App 内置 crispctl：在终端、脚本或快捷指令里读取和设置亮度、开关 HDR 与额外亮度，或连接、断开某块显示器。</p></div>
+        <div class="card reveal"><h3>命令行</h3><p>App 内置 crispctl：在终端或脚本里调亮度、HDR 与额外亮度、图像调整、预设、显示器输入源，或连接、断开某块显示器。</p></div>
         <div class="card reveal"><h3>更多</h3><p>合并亮度滑块、自动亮度跟随内建屏、防止睡眠、隐藏刘海、开机启动。</p></div>
       </div>
     </div>
@@ -132,8 +135,8 @@
           <p>有，简体中文和繁體中文都支持。Crisp 跟随 macOS 的首选语言顺序：如果列表里英文排在中文前面，Crisp 就会显示英文。想只让 Crisp 用中文，打开“系统设置 &gt; 通用 &gt; 语言与地区”，在“应用程序”下点“+”，选择 Crisp 和中文，然后重新打开 Crisp。</p>
         </details>
         <details>
-          <summary>可以在终端或脚本里控制显示器吗？</summary>
-          <p>可以。Crisp 在 App 内置了命令行工具 <code>crispctl</code>，在设置里打开开关就会把它链接到 <code>/usr/local/bin</code>。在终端、Shell 脚本或快捷指令里，你可以列出显示器、读取和设置亮度、开关 HDR 和额外亮度，也可以连接或断开某块显示器，按显示器 id 或 UUID 指定。</p>
+          <summary>可以用快捷指令、终端或脚本控制显示器吗？</summary>
+          <p>可以。Crisp 在 App 内置了命令行工具 <code>crispctl</code>，在设置里打开开关就会把它链接到 <code>/usr/local/bin</code>。在终端或 Shell 脚本里，你可以列出显示器、读取和设置亮度、开关 HDR 和额外亮度、调整图像、应用预设、切换输入源，也可以连接或断开某块显示器，按显示器 id 或 UUID 指定。同样的操作在“快捷指令”App 里也有，用“特定时间”自动化就能按白天和夜晚切换预设。</p>
         </details>
         <details>
           <summary>Crisp 和 BetterDisplay、Lunar 有什么区别？</summary>
