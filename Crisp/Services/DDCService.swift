@@ -510,6 +510,15 @@ final class DDCService: ObservableObject, @unchecked Sendable {
     /// re-quarantines, so a transient burst can't kill reads for the rest of the session.
     private var readQuarantineUntil: [CGDirectDisplayID: Date] = [:]
     private let readQuarantineInterval: TimeInterval = 600
+    /// A failed attempt this slow is a channel that does not ack at all (the I2C call gives
+    /// up after about 6 s), not a garbage reply, so it quarantines at once: the reads queued
+    /// behind it fail fast, and a hold before an enable or disable waits for one attempt
+    /// instead of all of them. See docs/ddc-notes.md (the hold around enable and disable).
+    private static let deafAttemptMs = 3000.0
+
+    private func readsQuarantined(_ displayID: CGDirectDisplayID) -> Bool {
+        readStateLock.withLock { readQuarantineUntil[displayID].map { Date() < $0 } ?? false }
+    }
 
     /// Synchronous DDC read (VCP Get). Returns (current, max) or nil on failure.
     private func readSynchronous(
@@ -544,7 +553,8 @@ final class DDCService: ObservableObject, @unchecked Sendable {
         var quarantinedAt: Int?
         readStateLock.withLock {
             if result == nil {
-                let streak = readFailStreak[displayID, default: 0] + 1
+                var streak = readFailStreak[displayID, default: 0] + 1
+                if ms >= Self.deafAttemptMs { streak = max(streak, readQuarantineThreshold) }
                 readFailStreak[displayID] = streak
                 if streak >= readQuarantineThreshold {
                     readQuarantineUntil[displayID] = Date().addingTimeInterval(readQuarantineInterval)
@@ -555,7 +565,8 @@ final class DDCService: ObservableObject, @unchecked Sendable {
             }
         }
         if let streak = quarantinedAt {
-            Self.log.notice("display \(displayID, privacy: .public): \(streak, privacy: .public) consecutive read failures, reads quarantined for \(Int(self.readQuarantineInterval), privacy: .public) s")
+            let why = ms >= Self.deafAttemptMs ? "a read timed out" : "\(streak) consecutive read failures"
+            Self.log.notice("display \(displayID, privacy: .public): \(why, privacy: .public), reads quarantined for \(Int(self.readQuarantineInterval), privacy: .public) s")
         }
         return result
     }
@@ -821,10 +832,23 @@ final class DDCService: ObservableObject, @unchecked Sendable {
         var bytes: [UInt8] = []
         var bad = 0
         while bytes.count < 4096 {
+            // A deaf channel would otherwise take about 6 s per chunk, up to 400 times.
+            guard !readsQuarantined(displayID) else {
+                Self.log.notice("capabilities display \(displayID, privacy: .public): reads quarantined, stopped at byte \(bytes.count, privacy: .public)")
+                return nil
+            }
             let offset = bytes.count
             let chunk = await withCheckedContinuation { continuation in
                 operationQueues.queue(for: displayID).async {
-                    continuation.resume(returning: self.arm64CapabilitiesChunk(displayID: displayID, offset: offset))
+                    let start = DispatchTime.now()
+                    let chunk = self.arm64CapabilitiesChunk(displayID: displayID, offset: offset)
+                    if case .bad = chunk, Self.millisSince(start) >= Self.deafAttemptMs {
+                        self.readStateLock.withLock {
+                            self.readQuarantineUntil[displayID] = Date().addingTimeInterval(self.readQuarantineInterval)
+                        }
+                        Self.log.notice("capabilities display \(displayID, privacy: .public): a chunk timed out, reads quarantined for \(Int(self.readQuarantineInterval), privacy: .public) s")
+                    }
+                    continuation.resume(returning: chunk)
                 }
             }
             switch chunk {
