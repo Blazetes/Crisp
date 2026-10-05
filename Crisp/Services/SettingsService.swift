@@ -56,6 +56,7 @@ final class SettingsService: ObservableObject, @unchecked Sendable {
         static let combinedBuiltinFactor  = "crisp.combinedBuiltinBrightnessAdjustment"
         static let showVolumeSliders      = "crisp.showVolumeSliders"
         static let crossDisplayGaps       = "crisp.crossDisplayGaps"
+        static let disconnectBuiltinWhenDocked = "crisp.disconnectBuiltinWhenDocked"
         static let ddcCacheTTL            = "crisp.ddcCacheTTL"
         static let colorPickerHistory     = "crisp.colorPickerHistory"
         static let brightnessKeyTarget    = "crisp.brightnessKeyTarget"
@@ -106,6 +107,12 @@ final class SettingsService: ObservableObject, @unchecked Sendable {
             defaults.set(crossDisplayGaps, forKey: Keys.crossDisplayGaps)
             EdgeCrossingService.shared.setEnabled(crossDisplayGaps)
         }
+    }
+
+    /// Off by default: the built-in goes off while an external is lit. The row starts and
+    /// ends it (PhysicalDisplayToggleService), not this didSet, which also runs in loadAll.
+    @Published var disconnectBuiltinWhenDocked: Bool = false {
+        didSet { defaults.set(disconnectBuiltinWhenDocked, forKey: Keys.disconnectBuiltinWhenDocked) }
     }
 
     @Published var ddcCacheTTL: Double = 5.0 {
@@ -249,6 +256,7 @@ final class SettingsService: ObservableObject, @unchecked Sendable {
         showVolumeSliders = defaults.object(forKey: Keys.showVolumeSliders) != nil
             ? defaults.bool(forKey: Keys.showVolumeSliders) : true
         crossDisplayGaps = defaults.bool(forKey: Keys.crossDisplayGaps)
+        disconnectBuiltinWhenDocked = defaults.bool(forKey: Keys.disconnectBuiltinWhenDocked)
         ddcCacheTTL = defaults.object(forKey: Keys.ddcCacheTTL) != nil
             ? defaults.double(forKey: Keys.ddcCacheTTL) : 5.0
         colorPickerHistory = defaults.stringArray(forKey: Keys.colorPickerHistory) ?? []
