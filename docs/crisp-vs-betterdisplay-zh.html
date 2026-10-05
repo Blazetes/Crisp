@@ -22,7 +22,7 @@
 <meta name="twitter:image" content="https://crispmac.app/og-card-zh.png">
 <link rel="icon" href="icon.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"Article","headline":"Crisp：免费开源的 BetterDisplay 平替","inLanguage":"zh-Hans","image":["https://crispmac.app/screenshot-zh.png"],"datePublished":"2026-07-31","dateModified":"2026-07-31","author":{"@type":"Person","name":"Didrik Galteland","url":"https://github.com/didriksg"}}
+{"@context":"https://schema.org","@type":"Article","headline":"Crisp：免费开源的 BetterDisplay 平替","inLanguage":"zh-Hans","image":["https://crispmac.app/screenshot-zh.png"],"datePublished":"2026-07-31","dateModified":"2026-10-06","author":{"@type":"Person","name":"Didrik Galteland","url":"https://github.com/didriksg"}}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Crisp","item":"https://crispmac.app/zh.html"},{"@type":"ListItem","position":2,"name":"Crisp 对比 BetterDisplay / Lunar / MonitorControl"}]}
@@ -47,7 +47,7 @@
     <p class="kicker">对比</p>
     <h1>Crisp：免费开源的 BetterDisplay 平替</h1>
     <p class="lead">大多数人买 BetterDisplay Pro，就是冲着那几个功能去的（灵活的 HiDPI 缩放、亮度、预设、排列），而 Crisp 把这些都做成了免费、开源（MIT）的功能。下面是它和 BetterDisplay、Lunar、MonitorControl 的逐项对比。</p>
-    <p class="byline">作者 <a href="https://github.com/didriksg">Didrik Galteland</a>（Crisp 作者）· <time datetime="2026-07-31">2026 年 7 月 31 日</time>更新</p>
+    <p class="byline">作者 <a href="https://github.com/didriksg">Didrik Galteland</a>（Crisp 作者）· <time datetime="2026-10-06">2026 年 10 月 6 日</time>更新</p>
   </header>
 
   <article class="prose">
@@ -139,7 +139,7 @@
           <tr>
             <th>显示器排列界面</th>
             <td class="c col-me"><span class="yes">✓</span></td>
-            <td class="c"><span class="no">✗</span></td>
+            <td class="c"><span class="yes">✓</span></td>
             <td class="c"><span class="no">✗</span></td>
             <td class="c"><span class="no">✗</span></td>
           </tr>
@@ -153,8 +153,22 @@
           <tr>
             <th>断开 / 关闭某块屏</th>
             <td class="c col-me"><span class="yes">✓</span></td>
-            <td class="c"><span class="yes">✓</span></td>
             <td class="c"><span class="pro">Pro</span></td>
+            <td class="c"><span class="pro">Pro</span></td>
+            <td class="c"><span class="no">✗</span></td>
+          </tr>
+          <tr>
+            <th>接上外接屏时自动关闭内建屏</th>
+            <td class="c col-me"><span class="yes">✓</span></td>
+            <td class="c"><span class="pro">Pro</span></td>
+            <td class="c"><span class="pro">Pro</span></td>
+            <td class="c"><span class="no">✗</span></td>
+          </tr>
+          <tr>
+            <th>切换显示器输入源（DDC）</th>
+            <td class="c col-me"><span class="yes">✓</span></td>
+            <td class="c"><span class="yes">✓</span></td>
+            <td class="c"><span class="yes">✓</span></td>
             <td class="c"><span class="no">✗</span></td>
           </tr>
           <tr>
@@ -196,7 +210,7 @@
       </table>
     </div>
     <p class="legend"><span class="yes">✓</span> 免费 &nbsp; <span class="pro">Pro</span> 仅付费版 &nbsp; <span class="no">✗</span> 不支持 &nbsp; ~ 部分 / 受限</p>
-    <p class="note">价格和免费 / Pro 的划分参考各自的官方文档整理（BetterDisplay、Lunar，截至 2026 年年中）。功能会在版本间调整，具体以官网为准。</p>
+    <p class="note">价格和免费 / Pro 的划分参考各自的官方文档整理（BetterDisplay、Lunar，截至 2026 年 10 月）。功能会在版本间调整，具体以官网为准。</p>
 
     <h2>为什么选 Crisp</h2>
     <p>如果你要的只是 1440p 或 4K 显示器上清晰的 HiDPI，再加上亮度（Mac 的亮度键也能直接调外接屏，和内建屏一样）、预设和排列，Crisp 全都免费给你。现在还包括 <strong>XDR/HDR 亮度增强</strong>，把 XDR MacBook 和 HDR 显示器推过 100%，这项功能 BetterDisplay 和 Lunar 都锁在 Pro 里；另外还能通过 DDC 调显示器自带音箱的音量。App 里还内置了命令行工具 <code>crispctl</code>，“快捷指令”里也有对应的操作：亮度、HDR、额外亮度、图像调整、预设、输入源以及连接或断开显示器，都能在终端、Shell 脚本或快捷指令自动化里完成。<strong>不用重置试用期，不用花钱买授权码，更不用去找破解版</strong>，因为它根本没有付费版。开源（MIT），代码随便看，也能自己编译。</p>
