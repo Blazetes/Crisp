@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 19f327c7fcfd5563516b8160dfd6c4ec4ffea82d
+          ref: 48b9d84b1ef07efae172f05a99e23cef853bde28
           path: source
       - uses: actions/checkout@v4
         with:
@@ -36,6 +36,11 @@ jobs:
         run: make check
       - name: Render named external UI and verify batch service
         run: ruby packaging/scripts/contribution-preview/prepare.rb source batch-display-connections packaging/build/named-preview
+      - uses: actions/upload-artifact@v4
+        with:
+          name: named-external-preview-48b9d84
+          path: packaging/build/named-preview/*.png
+          retention-days: 30
       - name: Build complete universal app
         working-directory: source
         run: ./scripts/release.sh v1.7.0
@@ -46,11 +51,11 @@ jobs:
           APP=build/Crisp.app
           PLIST="$APP/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName Crisp Feature Test' "$PLIST"
-          /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 17002' "$PLIST"
+          /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 17003' "$PLIST"
           /usr/libexec/PlistBuddy -c 'Set :SUEnableAutomaticChecks false' "$PLIST"
           /usr/libexec/PlistBuddy -c 'Add :SUAllowsAutomaticUpdates bool false' "$PLIST"
           /usr/libexec/PlistBuddy -c 'Add :SUAutomaticallyUpdate bool false' "$PLIST"
-          /usr/libexec/PlistBuddy -c 'Add :CrispFeatureSourceRevision string 19f327c7fcfd5563516b8160dfd6c4ec4ffea82d' "$PLIST"
+          /usr/libexec/PlistBuddy -c 'Add :CrispFeatureSourceRevision string 48b9d84b1ef07efae172f05a99e23cef853bde28' "$PLIST"
           mkdir -p build/installer deliverables
           jq -n --arg source "$(git rev-parse HEAD)" --arg xcode "$(xcodebuild -version)" \
             --arg sdk "$(xcrun --sdk macosx --show-sdk-version)" --arg built "$(date -u +%FT%TZ)" \
@@ -70,22 +75,22 @@ jobs:
           cp ../packaging/docs/FEATURE-TEST-INSTALL.md build/installer/INSTALL-TEST.md
           ditto "$APP" build/installer/Crisp.app
           ln -s /Applications build/installer/Applications
-          git archive --format=zip --prefix=Crisp-source/ --output=deliverables/Crisp-named-external-source-19f327c.zip HEAD
-          cp deliverables/Crisp-named-external-source-19f327c.zip build/installer/SourceCode.zip
+          git archive --format=zip --prefix=Crisp-source/ --output=deliverables/Crisp-named-external-source-48b9d84.zip HEAD
+          cp deliverables/Crisp-named-external-source-48b9d84.zip build/installer/SourceCode.zip
           hdiutil create -volname 'Crisp Feature Test' -srcfolder build/installer \
-            -ov -format UDZO deliverables/Crisp-named-external-19f327c.dmg
-          hdiutil verify deliverables/Crisp-named-external-19f327c.dmg
-          shasum -a 256 deliverables/Crisp-named-external-19f327c.dmg \
-            deliverables/Crisp-named-external-source-19f327c.zip > deliverables/SHA256SUMS.txt
+            -ov -format UDZO deliverables/Crisp-named-external-48b9d84.dmg
+          hdiutil verify deliverables/Crisp-named-external-48b9d84.dmg
+          shasum -a 256 deliverables/Crisp-named-external-48b9d84.dmg \
+            deliverables/Crisp-named-external-source-48b9d84.zip > deliverables/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: Crisp-named-external-19f327c
+          name: Crisp-named-external-48b9d84
           path: source/deliverables/
           retention-days: 30
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: named-external-verification-19f327c
+          name: named-external-verification-48b9d84
           path: |
             packaging/build/named-preview/*.png
             source/build/*.xcresult
