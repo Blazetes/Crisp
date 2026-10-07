@@ -1706,6 +1706,22 @@
         }
       }
     },
+    "Display Connection" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示器连接"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顯示器連線"
+          }
+        }
+      }
+    },
     "Display: %@" : {
       "localizations" : {
         "zh-Hans" : {
