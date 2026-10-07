@@ -6,4 +6,6 @@ Display and input services are fixtures. They do not change real monitor connect
 
 Validation: https://github.com/Blazetes/Crisp/actions/runs/37586562363
 
+Final single-switch alignment (22e17ab): https://github.com/Blazetes/Crisp/actions/runs/37588176832/attempts/2
+
 These previews verify the row layout and translated strings. They are not screenshots of a deployed Crisp build and do not establish real hardware behavior.
