@@ -11,7 +11,13 @@ struct BatchDisplayConnectionView: View {
         if service.isSupported, !state.entries.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
-                    MenuItemIcon(systemName: "display.2", color: .blue, active: state.isOn)
+                    Image("ExternalDisplayConnection")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .foregroundStyle(state.isOn ? Color.primary : Color.secondaryReadable)
+                        .frame(width: 22, height: 22)
+                        .frame(width: 26, height: 26)
                         .accessibilityHidden(true)
                     Text(state.hasProtectedDisplay ? "Other External Displays" : "External Displays").font(.body)
                     Spacer(minLength: 0)
