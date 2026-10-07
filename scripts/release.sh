@@ -86,6 +86,13 @@ cp -R "$ROOT/vendor/Sparkle/Sparkle.framework" "$APP/Contents/Frameworks/"
 rm -rf "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices" \
        "$APP/Contents/Frameworks/Sparkle.framework/XPCServices"
 
+# Preserve SVG menu assets in the swiftc release path as well as Xcode builds.
+echo "==> Compiling vector image assets…"
+DEVELOPER_DIR="$AI_DEV" xcrun actool Crisp/Assets.xcassets \
+  --compile "$APP/Contents/Resources" --platform macosx --target-device mac \
+  --minimum-deployment-target 14.0 --app-icon AppIcon \
+  --output-partial-info-plist "$BUILD/asset-info.plist"
+
 echo "==> Building app icon from asset catalog…"
 ICONSET="$BUILD/AppIcon.iconset"; mkdir -p "$ICONSET"
 ICONS="Crisp/Assets.xcassets/AppIcon.appiconset"

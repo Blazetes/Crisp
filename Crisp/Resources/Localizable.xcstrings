@@ -1212,6 +1212,38 @@
         }
       }
     },
+    "Connect All External Displays" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连接所有外接显示器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連線所有外接顯示器"
+          }
+        }
+      }
+    },
+    "Connected" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已连接"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已連線"
+          }
+        }
+      }
+    },
     "Contrast" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1672,6 +1704,22 @@
         }
       }
     },
+    "Display configuration is still in progress. Wait for it to finish." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示器配置仍在进行，请等待完成。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顯示器設定仍在進行，請等待完成。"
+          }
+        }
+      }
+    },
     "Display configuration timed out." : {
       "localizations" : {
         "zh-Hans" : {
@@ -1738,6 +1786,22 @@
         }
       }
     },
+    "Display Unavailable" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示器不可用"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顯示器無法使用"
+          }
+        }
+      }
+    },
     "Display: %@" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1783,6 +1847,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "啟用高解析度縮放"
+          }
+        }
+      }
+    },
+    "External Displays" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "外接显示器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "外接顯示器"
           }
         }
       }
@@ -2511,6 +2591,22 @@
         }
       }
     },
+    "Main Display Kept Connected" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "主屏保留连接"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "主螢幕保持連線"
+          }
+        }
+      }
+    },
     "Main" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2836,6 +2932,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "打開可以請我喝咖啡的頁面"
+          }
+        }
+      }
+    },
+    "Other External Displays" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其他外接显示器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其他外接顯示器"
           }
         }
       }

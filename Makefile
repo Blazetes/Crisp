@@ -1,6 +1,6 @@
 # Crisp — convenience wrappers around the existing build scripts.
 #
-# Fast dev loop (Command Line Tools only, no Xcode):
+# Fast dev loop (full Xcode for vector assets and Shortcuts):
 #   make dev        compile, swap the binary into /Applications/Crisp.app, relaunch
 #   make compile    compile the binary only (./Crisp-bin), no swap — quick build check
 #   make test       generate the Xcode project and run unit tests

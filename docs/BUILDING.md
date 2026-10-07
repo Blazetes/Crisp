@@ -1,13 +1,13 @@
-# Building without Xcode
+# Building Crisp
 
-**TL;DR:** run `./dev.sh`, which compiles, swaps the binary into the installed
-`/Applications/Crisp.app`, syncs the version from `project.yml`, re-signs, and
-relaunches. The rest of this doc explains what it does.
+**TL;DR:** with full Xcode installed, run `./dev.sh`, which compiles the binary
+and vector assets, updates the installed `/Applications/Crisp.app`, syncs the
+version from `project.yml`, re-signs, and relaunches. The rest of this doc explains what it does.
 
 You can build the full .app in Xcode (`xcodegen generate`, then archive), or a
-full DMG with `./scripts/release.sh vX.Y.Z` (swiftc, but it needs Xcode for the
-Shortcuts actions, see below). But for the fast
-dev loop, the binary alone compiles with just the Command Line Tools:
+full DMG with `./scripts/release.sh vX.Y.Z` (swiftc, with Xcode for vector assets
+and Shortcuts actions). The binary alone can compile with matching Command Line
+Tools and a macOS 26-or-newer SDK, but this does not compile the SVG assets:
 
 ```sh
 ./scripts/fetch-sparkle.sh   # once: vendors the Sparkle updater framework
@@ -23,9 +23,9 @@ swiftc -O -swift-version 6 -parse-as-library \
   -o Crisp-bin
 ```
 
-To run it, swap the binary into an existing Crisp.app install and re-sign ad
-hoc (the install must contain `Contents/Frameworks/Sparkle.framework`; installs
-of a pre-Sparkle release don't, so use `./dev.sh`, which copies it in):
+To run a binary-only build, the existing bundle must already contain matching
+`Contents/Resources/Assets.car`, Shortcuts metadata and Sparkle.framework. Prefer
+`./dev.sh` to synchronize these app resources before re-signing:
 
 ```sh
 pkill -x Crisp
@@ -35,15 +35,16 @@ codesign --force -s - --entitlements Crisp/Crisp.entitlements /Applications/Cris
 open /Applications/Crisp.app
 ```
 
-This is the fast dev loop: edit, compile, swap, relaunch, no Xcode involved.
+The fast dev loop is edit, compile, synchronize resources, re-sign, relaunch.
+`dev.sh` requires full Xcode to compile the SVG asset catalog before the swap.
 
 ## Shortcuts actions
 
-Shortcuts finds Crisp's actions through `Contents/Resources/Metadata.appintents`, which an Xcode build writes. `scripts/appintents.sh` does the same for the swiftc build: swiftc emits the App Intents types' const values, and `appintentsmetadataprocessor` turns them into the metadata. Both steps need Xcode's toolchain, so `release.sh` fails without Xcode, and `dev.sh` without Xcode keeps the installed app's metadata as it is, so actions you changed or added do not show in Shortcuts. After a deploy, Shortcuts picks up changed actions only after `lsregister -f /Applications/Crisp.app` and a relaunch of Shortcuts.
+Shortcuts finds Crisp's actions through `Contents/Resources/Metadata.appintents`, which an Xcode build writes. `scripts/appintents.sh` does the same for the swiftc build: swiftc emits the App Intents types' const values, and `appintentsmetadataprocessor` turns them into the metadata. Both steps need Xcode's toolchain. Both release and dev builds require it and regenerate the metadata. After a deploy, Shortcuts picks up changed actions only after `lsregister -f /Applications/Crisp.app` and a relaunch of Shortcuts.
 
 ## crispctl
 
-`dev.sh` swaps only the app binary. To build the command line tool on its own (the same sources `scripts/release.sh` uses):
+`dev.sh` updates the app binary/resources, not the CLI. To build the command line tool on its own (the same sources `scripts/release.sh` uses):
 
 ```sh
 swiftc -O -swift-version 6 -target arm64-apple-macos14.0 \
