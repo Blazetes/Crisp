@@ -94,6 +94,7 @@ final class BatchDisplayConnectionService: ObservableObject {
         if case .failure(let error) = result {
             failures.append(Failure(id: uuid, name: name, error: error))
             if case .timedOut = error { return false }
+            if case .configurationInProgress = error { return false }
             return true
         }
         for _ in 0..<20 {

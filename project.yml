@@ -89,6 +89,8 @@ targets:
       - path: Crisp/Models/DisplayConnectionPlan.swift
       - path: Crisp/Models/ExternalDisplayConnectionState.swift
       - path: Crisp/Models/DisplayConnectionQueue.swift
+      - path: Crisp/Models/DisplayConfigurationGate.swift
+      - path: Crisp/Services/CGHelpers.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.crisp.tests

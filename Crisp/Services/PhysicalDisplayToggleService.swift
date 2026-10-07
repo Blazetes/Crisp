@@ -22,6 +22,9 @@ final class PhysicalDisplayToggleService: ObservableObject {
     /// back a display's HDR switch, and this service otherwise works from CGDirectDisplayIDs.
     weak var displayManager: DisplayManager?
     private let connectionQueue = DisplayConnectionQueue()
+    private let configurationGate = DisplayConfigurationGate()
+    @Published private(set) var configurationInProgress = false
+    private var reconcileWhenSettled = false
 
     /// Snapshot of a display we disconnected, kept because a disconnected display no longer
     /// appears in DisplayManager.displays, so we need its metadata to render a Reconnect row.
@@ -51,6 +54,7 @@ final class PhysicalDisplayToggleService: ObservableObject {
         /// The 10s wrapper only stops waiting; it can't cancel CGCompleteDisplayConfiguration,
         /// so this is not proof the change didn't take.
         case timedOut
+        case configurationInProgress
 
         var description: String {
             switch self {
@@ -64,6 +68,8 @@ final class PhysicalDisplayToggleService: ObservableObject {
                 return String(localized: "Display not found.")
             case .timedOut:
                 return String(localized: "Display configuration timed out.")
+            case .configurationInProgress:
+                return String(localized: "Display configuration is still in progress. Wait for it to finish.")
             }
         }
     }
@@ -257,12 +263,16 @@ final class PhysicalDisplayToggleService: ObservableObject {
     /// would leave zero active displays, so the user can never black out their only screen.
     @discardableResult
     func disconnect(_ display: DisplayInfo, returnInput: UInt16? = nil) async -> Result<Void, ToggleError> {
-        await connectionQueue.run { await self.performDisconnect(display, returnInput: returnInput) }
+        let requestedUUID = display.displayUUID
+        return await connectionQueue.run { await self.performDisconnect(display, uuid: requestedUUID, returnInput: returnInput) }
     }
 
-    private func performDisconnect(_ display: DisplayInfo, returnInput: UInt16?) async -> Result<Void, ToggleError> {
+    private func performDisconnect(_ display: DisplayInfo, uuid requestedUUID: String,
+                                   returnInput: UInt16?) async -> Result<Void, ToggleError> {
         guard isSupported else { return .failure(.unsupportedPlatform) }
-        guard let displayID = onlineDisplayIDs().first(where: { uuid(for: $0) == display.displayUUID }) else {
+        guard !configurationGate.isPending else { return .failure(.configurationInProgress) }
+        guard let displayID = onlineDisplayIDs().first(where: { uuid(for: $0) == requestedUUID }),
+              display.isBuiltin == (CGDisplayIsBuiltin(displayID) != 0) else {
             return .failure(.displayNotFound)
         }
         if wouldLeaveNoActiveDisplay(displayID) { return .failure(.wouldLeaveNoActiveDisplay) }
@@ -271,12 +281,12 @@ final class PhysicalDisplayToggleService: ObservableObject {
         var companions: [String]?
         if display.isBuiltin {
             let externals = viewableActiveDisplays().filter { $0 != displayID }.map { uuid(for: $0) }
-            let known = parked?.uuid == display.displayUUID ? parked?.companions ?? [] : []
+            let known = parked?.uuid == requestedUUID ? parked?.companions ?? [] : []
             companions = Array(Set(externals + known))
         }
         // Snapshot BEFORE disabling, afterwards the display is gone from the normal APIs.
         let snapshot = DisconnectedDisplay(
-            uuid: display.displayUUID,
+            uuid: requestedUUID,
             displayID: displayID,
             name: display.name,
             width: display.pixelWidth,
@@ -286,17 +296,23 @@ final class PhysicalDisplayToggleService: ObservableObject {
             companions: companions
         )
 
-        Self.log.notice("disconnect requested: \(display.displayUUID, privacy: .public) id \(displayID, privacy: .public)")
+        Self.log.notice("disconnect requested: \(requestedUUID, privacy: .public) id \(displayID, privacy: .public)")
         let otherStates = currentStates(excluding: [displayID])
-        let result = await setEnabled(false, displayID: displayID)
+        let result = await setEnabled(false, displayID: displayID, expectedUUID: requestedUUID) { [weak self] lateResult in
+            if case .success = lateResult { self?.rememberDisconnected(snapshot) }
+        }
         if case .success = result {
-            disconnected.removeAll { $0.uuid == snapshot.uuid }
-            disconnected.append(snapshot)
-            saveDesired()
-            if parked?.uuid == snapshot.uuid { setParked(nil) }
+            rememberDisconnected(snapshot)
             Task { [weak self] in await self?.restoreStates(otherStates) }
         }
         return result
+    }
+
+    private func rememberDisconnected(_ snapshot: DisconnectedDisplay) {
+        disconnected.removeAll { $0.uuid == snapshot.uuid }
+        disconnected.append(snapshot)
+        saveDesired()
+        if parked?.uuid == snapshot.uuid { setParked(nil) }
     }
 
     /// What an arrangement decides for one display: its mode, its rotation, and whether it is
@@ -379,6 +395,7 @@ final class PhysicalDisplayToggleService: ObservableObject {
 
     private func performReconnect(uuid: String, byUser: Bool) async -> Result<Void, ToggleError> {
         guard isSupported else { return .failure(.unsupportedPlatform) }
+        guard !configurationGate.isPending else { return .failure(.configurationInProgress) }
         guard let record = disconnected.first(where: { $0.uuid == uuid }) else {
             return .failure(.displayNotFound)
         }
@@ -390,7 +407,11 @@ final class PhysicalDisplayToggleService: ObservableObject {
         if byUser, record.isBuiltin == true, SettingsService.shared.disconnectBuiltinWhenDocked {
             standDownUntilUndock = true
         }
-        let result = await setEnabled(true, displayID: targetID)
+        let result = await setEnabled(true, displayID: targetID) { [weak self] lateResult in
+            guard let self, case .success = lateResult else { return }
+            self.disconnected.removeAll { $0.uuid == uuid }
+            self.saveDesired()
+        }
         if case .success = result {
             // Not proof of recovery (see verifyBackOnline); record drops either way, since
             // keeping it would have reconcile switch the display back off the moment it appears.
@@ -509,61 +530,6 @@ final class PhysicalDisplayToggleService: ObservableObject {
         return true
     }
 
-    /// Runs SLSConfigureDisplayEnabled inside a CG transaction with `.permanently` (matching
-    /// Lunar BlackOut, screen_tune, BetterDisplay), which is what makes the disconnect stick.
-    private func setEnabled(_ enabled: Bool, displayID: CGDirectDisplayID) async -> Result<Void, ToggleError> {
-        let action = enabled ? "enable" : "disable"
-        let waited = DispatchTime.now()
-        // No DDC traffic while this transaction runs: WindowServer's enable can wait behind an
-        // in-flight I2C read and freeze the whole machine with it (issue #33).
-        // See docs/display-notes.md (PhysicalDisplayToggleService).
-        let releaseDDC = await DDCService.shared.hold()
-        defer { releaseDDC() }
-        let heldMs = Self.millisSince(waited)
-        if heldMs > Self.slowOpThresholdMs {
-            Self.log.notice("\(action, privacy: .public) \(displayID, privacy: .public): waited \(Int(heldMs), privacy: .public) ms for DDC to go idle")
-        }
-        let result: Result<Void, ToggleError> = await CGHelpers.runWithTimeout(
-            seconds: 10, fallback: .failure(.timedOut)
-        ) {
-            var config: CGDisplayConfigRef?
-            guard CGBeginDisplayConfiguration(&config) == .success, let cfg = config else {
-                Self.log.error("\(action, privacy: .public) \(displayID, privacy: .public): CGBeginDisplayConfiguration failed")
-                return .failure(.configurationFailed(.failure))
-            }
-            let setErr = SLSConfigureDisplayEnabled(cfg, displayID, enabled)
-            guard setErr == .success else {
-                CGCancelDisplayConfiguration(cfg)
-                Self.log.error("\(action, privacy: .public) \(displayID, privacy: .public): SLSConfigureDisplayEnabled failed \(setErr.rawValue, privacy: .public)")
-                return .failure(.configurationFailed(setErr))
-            }
-            // The call that can block: keeps running after the 10s wrapper gives up (it can
-            // only stop waiting, not cancel), and WindowServer holding it can stall the whole
-            // machine, not just Crisp (issue #33). Timed unconditionally for captures.
-            let committing = DispatchTime.now()
-            let complete = CGCompleteDisplayConfiguration(cfg, .permanently)
-            let commitMs = Self.millisSince(committing)
-            guard complete == .success else {
-                CGCancelDisplayConfiguration(cfg)
-                Self.log.error("\(action, privacy: .public) \(displayID, privacy: .public): commit failed \(complete.rawValue, privacy: .public) after \(Int(commitMs), privacy: .public) ms")
-                return .failure(.configurationFailed(complete))
-            }
-            if commitMs > Self.slowOpThresholdMs {
-                Self.log.notice("slow \(action, privacy: .public) \(displayID, privacy: .public): commit took \(Int(commitMs), privacy: .public) ms")
-            }
-            return .success(())
-        }
-        // Not the same as what WindowServer will actually do: on a wrapper timeout this
-        // reports failure at ~10000ms while the commit keeps running.
-        let waitedMs = Self.millisSince(waited)
-        if case .failure = result {
-            Self.log.notice("\(action, privacy: .public) \(displayID, privacy: .public): reported failure after \(Int(waitedMs), privacy: .public) ms")
-        } else {
-            Self.log.notice("\(action, privacy: .public) \(displayID, privacy: .public): reported success after \(Int(waitedMs), privacy: .public) ms")
-        }
-        return result
-    }
-
     /// Safety net for softReconnect's re-enable retries all failing: sweeps every SLS-disabled
     /// display Crisp didn't disconnect on purpose, so a transient failure can't leave a screen
     /// stuck black. Leaves other apps' intentional disables alone.
@@ -659,6 +625,10 @@ final class PhysicalDisplayToggleService: ObservableObject {
     /// drops the record if it can't take, so the list never claims a lit display is
     /// disconnected. See docs/display-notes.md (reconcile).
     func reconcile() {
+        if configurationGate.isPending {
+            reconcileWhenSettled = true
+            return
+        }
         guard !disconnected.isEmpty else { return }
         let onlineIDs = onlineDisplayIDs()
         let onlineUUIDs = Set(onlineIDs.map { uuid(for: $0) })
@@ -731,7 +701,12 @@ final class PhysicalDisplayToggleService: ObservableObject {
         if !refused {
             // Same arrangement-move risk as disconnect() (#108); restore targets the modes
             // from before the display resurfaced (baselineModes), not the ones its own enable produced.
-            if case .failure(.timedOut) = await setEnabled(false, displayID: liveID) {
+            let result = await setEnabled(false, displayID: liveID)
+            if case .failure(.configurationInProgress) = result {
+                reconcileWhenSettled = true
+                return
+            }
+            if case .failure(.timedOut) = result {
                 timedOut = true
             }
             // Started before the verify below (which can hold for seconds) so the visible flip
@@ -990,5 +965,94 @@ final class PhysicalDisplayToggleService: ObservableObject {
         disconnected = decoded
         // Nothing is disconnected yet; this only seeds the "Disconnected" UI. The first
         // refresh after launch re-applies it through reconcile(), where the safety rails are.
+    }
+}
+
+// MARK: - Blocking Configuration Boundary
+
+extension PhysicalDisplayToggleService {
+    /// Runs SLSConfigureDisplayEnabled inside a CG transaction with `.permanently` (matching
+    /// Lunar BlackOut, screen_tune, BetterDisplay), which is what makes the disconnect stick.
+    private func setEnabled(_ enabled: Bool, displayID: CGDirectDisplayID, expectedUUID: String? = nil,
+                            onLateCompletion: (@MainActor @Sendable (Result<Void, ToggleError>) -> Void)? = nil)
+        async -> Result<Void, ToggleError> {
+        guard configurationGate.begin() else { return .failure(.configurationInProgress) }
+        configurationInProgress = true
+        let gate = configurationGate
+        let requestedUUID = expectedUUID ?? uuid(for: displayID)
+        let action = enabled ? "enable" : "disable"
+        let waited = DispatchTime.now()
+        // No DDC traffic while this transaction runs: WindowServer's enable can wait behind an
+        // in-flight I2C read and freeze the whole machine with it (issue #33).
+        // See docs/display-notes.md (PhysicalDisplayToggleService).
+        let releaseDDC = await DDCService.shared.hold()
+        let targetID: CGDirectDisplayID
+        if enabled || expectedUUID == nil {
+            targetID = displayID
+        } else if let currentID = onlineDisplayIDs().first(where: { uuid(for: $0) == requestedUUID }),
+                  !wouldLeaveNoActiveDisplay(currentID) {
+            targetID = currentID
+        } else {
+            releaseDDC()
+            gate.finish()
+            configurationInProgress = false
+            return .failure(.wouldLeaveNoActiveDisplay)
+        }
+        let heldMs = Self.millisSince(waited)
+        if heldMs > Self.slowOpThresholdMs {
+            Self.log.notice("\(action, privacy: .public) \(displayID, privacy: .public): waited \(Int(heldMs), privacy: .public) ms for DDC to go idle")
+        }
+        let result: Result<Void, ToggleError> = await CGHelpers.runWithTimeout(
+            seconds: 10, fallback: .failure(.timedOut),
+            onOperationFinished: { [weak self] result, late in
+                releaseDDC()
+                if !late { gate.finish() }
+                Task { @MainActor in
+                    if late { onLateCompletion?(result); gate.finish() }
+                    guard let self else { return }
+                    self.configurationInProgress = gate.isPending
+                    if late || self.reconcileWhenSettled {
+                        self.reconcileWhenSettled = false
+                        self.displayManager?.refreshDisplays()
+                    }
+                }
+            }
+        ) {
+            var config: CGDisplayConfigRef?
+            guard CGBeginDisplayConfiguration(&config) == .success, let cfg = config else {
+                Self.log.error("\(action, privacy: .public) \(displayID, privacy: .public): CGBeginDisplayConfiguration failed")
+                return .failure(.configurationFailed(.failure))
+            }
+            let setErr = SLSConfigureDisplayEnabled(cfg, targetID, enabled)
+            guard setErr == .success else {
+                CGCancelDisplayConfiguration(cfg)
+                Self.log.error("\(action, privacy: .public) \(displayID, privacy: .public): SLSConfigureDisplayEnabled failed \(setErr.rawValue, privacy: .public)")
+                return .failure(.configurationFailed(setErr))
+            }
+            // The call that can block: keeps running after the 10s wrapper gives up (it can
+            // only stop waiting, not cancel), and WindowServer holding it can stall the whole
+            // machine, not just Crisp (issue #33). Timed unconditionally for captures.
+            let committing = DispatchTime.now()
+            let complete = CGCompleteDisplayConfiguration(cfg, .permanently)
+            let commitMs = Self.millisSince(committing)
+            guard complete == .success else {
+                CGCancelDisplayConfiguration(cfg)
+                Self.log.error("\(action, privacy: .public) \(displayID, privacy: .public): commit failed \(complete.rawValue, privacy: .public) after \(Int(commitMs), privacy: .public) ms")
+                return .failure(.configurationFailed(complete))
+            }
+            if commitMs > Self.slowOpThresholdMs {
+                Self.log.notice("slow \(action, privacy: .public) \(displayID, privacy: .public): commit took \(Int(commitMs), privacy: .public) ms")
+            }
+            return .success(())
+        }
+        // Not the same as what WindowServer will actually do: on a wrapper timeout this
+        // reports failure at ~10000ms while the commit keeps running.
+        let waitedMs = Self.millisSince(waited)
+        if case .failure = result {
+            Self.log.notice("\(action, privacy: .public) \(displayID, privacy: .public): reported failure after \(Int(waitedMs), privacy: .public) ms")
+        } else {
+            Self.log.notice("\(action, privacy: .public) \(displayID, privacy: .public): reported success after \(Int(waitedMs), privacy: .public) ms")
+        }
+        return result
     }
 }

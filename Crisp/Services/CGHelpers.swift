@@ -8,6 +8,7 @@ enum CGHelpers {
     static func runWithTimeout<T: Sendable>(
         seconds: Double,
         fallback: T,
+        onOperationFinished: (@Sendable (T, Bool) -> Void)? = nil,
         operation: @escaping @Sendable () -> T
     ) async -> T {
         await withCheckedContinuation { cont in
@@ -15,7 +16,9 @@ enum CGHelpers {
 
             DispatchQueue.global(qos: .userInitiated).async {
                 let result = operation()
-                if once.claim() { cont.resume(returning: result) }
+                let completedInTime = once.claim()
+                onOperationFinished?(result, !completedInTime)
+                if completedInTime { cont.resume(returning: result) }
             }
 
             DispatchQueue.global().asyncAfter(deadline: .now() + seconds) {

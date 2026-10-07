@@ -1,6 +1,5 @@
 #!/bin/bash
-# Crisp — fast dev build & run (no Xcode needed, Command Line Tools only; with
-# Xcode installed it also builds the Shortcuts actions, see scripts/appintents.sh).
+# Crisp — fast dev build & run (full Xcode builds vector assets and Shortcuts).
 #
 # Compiles the binary with swiftc, swaps it into the installed /Applications/Crisp.app,
 # syncs the version from project.yml, re-signs (stable identity if present, else ad
@@ -34,6 +33,17 @@ if appintents_init "$(mktemp -d -t crisp-appintents)"; then
     AI_FLAGS=$(appintents_swiftc_flags arm64)
 fi
 
+if [ -z "$AI_DEV" ]; then
+    echo "error: full Xcode is required to compile the SVG menu assets." >&2
+    exit 1
+fi
+ASSETS=$(mktemp -d -t crisp-dev-assets)
+trap 'rm -rf "$ASSETS"' EXIT
+DEVELOPER_DIR="$AI_DEV" xcrun actool Crisp/Assets.xcassets \
+    --compile "$ASSETS" --platform macosx --target-device mac \
+    --minimum-deployment-target 14.0 --app-icon AppIcon \
+    --output-partial-info-plist "$ASSETS/asset-info.plist"
+
 echo "==> Compiling Crisp $VERSION ($BUILD)..."
 # The target is explicit: on macOS 27 swiftc with no -target stamps the binary
 # with a deployment target above the running system, and LaunchServices then
@@ -54,6 +64,8 @@ echo "==> Swapping into ${APP}..."
 pkill -x Crisp 2>/dev/null || true
 sleep 1
 cp Crisp-bin "$APP/Contents/MacOS/Crisp"
+mkdir -p "$APP/Contents/Resources"
+cp "$ASSETS/Assets.car" "$APP/Contents/Resources/Assets.car"
 if [ -n "$AI_DEV" ]; then
     echo "==> Writing Shortcuts actions metadata..."
     appintents_metadata "$APP/Contents/MacOS/Crisp" "$APP/Contents/Resources" arm64

@@ -1704,6 +1704,22 @@
         }
       }
     },
+    "Display configuration is still in progress. Wait for it to finish." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示器配置仍在进行，请等待完成。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顯示器設定仍在進行，請等待完成。"
+          }
+        }
+      }
+    },
     "Display configuration timed out." : {
       "localizations" : {
         "zh-Hans" : {

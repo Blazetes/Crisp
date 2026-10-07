@@ -21,7 +21,7 @@ struct BatchDisplayConnectionView: View {
                         .accessibilityHidden(true)
                     Text(state.hasProtectedDisplay ? "Other External Displays" : "External Displays").font(.body)
                     Spacer(minLength: 0)
-                    if batch.isBusy {
+                    if batch.isBusy || service.configurationInProgress {
                         ProgressView().controlSize(.small).frame(width: 18, height: 18)
                     } else if state.isOn && state.canReconnect {
                         Button { run(.reconnectAll) } label: {
@@ -38,7 +38,7 @@ struct BatchDisplayConnectionView: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .controlSize(.small)
-                    .disabled(batch.isBusy || (!state.canDisconnect && !state.canReconnect))
+                    .disabled(batch.isBusy || service.configurationInProgress || (!state.canDisconnect && !state.canReconnect))
                 }
 
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 6), count: state.columnCount),
@@ -51,7 +51,7 @@ struct BatchDisplayConnectionView: View {
                                 displayName(entry)
                             }
                             .buttonStyle(.plain)
-                            .disabled(batch.isBusy || (!entry.isConnected && !entry.isAvailable))
+                            .disabled(batch.isBusy || service.configurationInProgress || (!entry.isConnected && !entry.isAvailable))
                         }
                     }
                 }
