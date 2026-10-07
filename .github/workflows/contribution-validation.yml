@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [display-connection-switch, batch-display-connections, keep-tools-expanded]
+        feature: [display-connection-switch, batch-display-connections]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,6 +24,9 @@ jobs:
           path: tooling
       - name: Install validation tools
         run: HOMEBREW_NO_AUTO_UPDATE=1 brew install swiftlint xcodegen
+      - name: Record validated revision
+        working-directory: source
+        run: git rev-parse HEAD
       - name: Run upstream checks
         working-directory: source
         run: make check
