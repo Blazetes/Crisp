@@ -26,13 +26,13 @@ struct DisconnectDisplayRow: View {
                 }
                 .toggleStyle(.switch)
                 .controlSize(.small)
-                .disabled(busy || service.wouldLeaveNoActiveDisplay(display.displayID))
+                .disabled(busy || service.configurationInProgress || service.wouldLeaveNoActiveDisplay(display.displayID))
                 .help(service.wouldLeaveNoActiveDisplay(display.displayID)
                       ? String(localized: "Refusing to disconnect: it would leave no active display.")
                       : String(localized: "Display Connection"))
                 .accessibilityLabel("Display Connection")
                 .overlay(alignment: .trailing) {
-                    if busy {
+                    if busy || service.configurationInProgress {
                         ProgressView().scaleEffect(0.6).frame(width: 16, height: 16)
                             .frame(width: 32, height: 20)
                     }
@@ -99,7 +99,7 @@ struct ReconnectDisplaysSection: View {
                 ForEach(service.disconnected) { record in
                     DisconnectedDisplayRow(
                         record: record,
-                        busy: busyUUIDs.contains(record.uuid),
+                        busy: busyUUIDs.contains(record.uuid) || service.configurationInProgress,
                         onReconnect: { reconnect(record) }
                     )
                     if let error = errors[record.uuid] {
