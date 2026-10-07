@@ -4,6 +4,8 @@
 
 The single-display previews now render source `8570f4cc4ab9d19984c447dabbd379ef0b4212f5`. Its exact-source local `make check`, Chinese translations, complete universal release dry run (`v0.0.0-ci`), deep signature/DMG checks and three-language native fixture rendering passed with Xcode 27.0 / SDK 27.0.
 
+The batch previews now render source `d7137e289676e48ebc9891ce0d1458942ad30b1b`: one external-display switch with a four-column name grid, equal 16:9 diagonal SVG and a same-row mixed-state recovery button. Exact-source local checks, translations, full universal release, signatures/DMG integrity, mock service assertions and 33 native previews passed. The actual full application asset resolves and renders at 16/20/24/32px with transparent borders. Additional Chinese previews show eight displays, mixed state and a protected desktop keeper.
+
 The physical backend guards remain active until blocking transactions actually finish, including after a UI timeout. Live display changes, clamshell/sleep recovery and installed-app interaction have not been tested. Earlier validation links below describe their explicitly listed revisions.
 
 These PNGs render the contribution branches' native SwiftUI views at Crisp's 308-point panel width, in English, Simplified Chinese, and Traditional Chinese.
