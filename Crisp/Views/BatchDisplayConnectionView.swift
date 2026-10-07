@@ -38,26 +38,15 @@ struct BatchDisplayConnectionView: View {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 6), count: state.columnCount),
                           alignment: .leading, spacing: 4) {
                     ForEach(state.entries) { entry in
-                        Button { toggle(entry.id) } label: {
-                            HStack(spacing: 2) {
-                                if entry.isProtected {
-                                    Image(systemName: "lock.fill").font(.system(size: 8)).accessibilityHidden(true)
-                                }
-                                Text(verbatim: entry.name)
-                                    .font(.caption)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
+                        if entry.isProtected {
+                            displayName(entry)
+                        } else {
+                            Button { toggle(entry.id) } label: {
+                                displayName(entry)
                             }
-                            .foregroundStyle(entry.isConnected ? Color.primary : Color.secondaryReadable)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(height: 20)
-                            .contentShape(Rectangle())
+                            .buttonStyle(.plain)
+                            .disabled(batch.isBusy || (!entry.isConnected && !entry.isAvailable))
                         }
-                        .buttonStyle(.plain)
-                        .disabled(batch.isBusy || entry.isProtected || (!entry.isConnected && !entry.isAvailable))
-                        .help(tooltip(for: entry))
-                        .accessibilityLabel(Text(verbatim: entry.name))
-                        .accessibilityValue(Text(status(for: entry)))
                     }
                 }
                 .padding(.leading, 32)
@@ -72,6 +61,25 @@ struct BatchDisplayConnectionView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 3)
         }
+    }
+
+    private func displayName(_ entry: ExternalDisplayConnectionState.Entry) -> some View {
+        HStack(spacing: 2) {
+            if entry.isProtected {
+                Image(systemName: "lock.fill").font(.system(size: 8)).accessibilityHidden(true)
+            }
+            Text(verbatim: entry.name)
+                .font(.caption)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .foregroundStyle(entry.isConnected ? Color.primary : Color.secondaryReadable)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 20)
+        .contentShape(Rectangle())
+        .help(tooltip(for: entry))
+        .accessibilityLabel(Text(verbatim: entry.name))
+        .accessibilityValue(Text(status(for: entry)))
     }
 
     private func status(for entry: ExternalDisplayConnectionState.Entry) -> LocalizedStringKey {
