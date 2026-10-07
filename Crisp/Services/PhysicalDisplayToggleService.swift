@@ -299,7 +299,9 @@ final class PhysicalDisplayToggleService: ObservableObject {
         Self.log.notice("disconnect requested: \(requestedUUID, privacy: .public) id \(displayID, privacy: .public)")
         let otherStates = currentStates(excluding: [displayID])
         let result = await setEnabled(false, displayID: displayID, expectedUUID: requestedUUID) { [weak self] lateResult in
-            if case .success = lateResult { self?.rememberDisconnected(snapshot) }
+            guard let self, case .success = lateResult else { return }
+            self.rememberDisconnected(snapshot)
+            Task { await self.restoreStates(otherStates) }
         }
         if case .success = result {
             rememberDisconnected(snapshot)
@@ -411,6 +413,9 @@ final class PhysicalDisplayToggleService: ObservableObject {
             guard let self, case .success = lateResult else { return }
             self.disconnected.removeAll { $0.uuid == uuid }
             self.saveDesired()
+            if byUser, let returnInput = record.returnInput {
+                Task { await InputSwitchService.shared.restoreInputAfterReconnect(uuid: uuid, input: returnInput) }
+            }
         }
         if case .success = result {
             // Not proof of recovery (see verifyBackOnline); record drops either way, since
@@ -436,6 +441,16 @@ final class PhysicalDisplayToggleService: ObservableObject {
         allDisplaysIncludingDisabled().first { uuid(for: $0) == record.uuid }
     }
 
+    private func preserveBlinkRecoveryIfUnresolved(_ result: Result<Void, ToggleError>, uuid: String,
+                                                   sleepGuard: CGVirtualDisplay?) {
+        switch result {
+        case .failure(.timedOut), .failure(.configurationInProgress):
+            lingeringSleepGuard = sleepGuard
+        default:
+            removePendingSoftReconnect(uuid)
+        }
+    }
+
     /// Disables then re-enables a display's framebuffer to force macOS to re-read a freshly
     /// written HiDPI override and re-enumerate modes, without a physical unplug. Leaves
     /// `disconnected` untouched (a re-enumeration blip, not a user disconnect); blinks even
@@ -443,7 +458,7 @@ final class PhysicalDisplayToggleService: ObservableObject {
     /// portables. See docs/display-notes.md (softReconnect).
     @discardableResult
     func softReconnect(_ display: DisplayInfo) async -> Bool {
-        guard isSupported else { return false }
+        guard isSupported, !configurationGate.isPending else { return false }
         let blinkUUID = display.displayUUID
         // Two callers can race the same display; a fixed virtual-display identity can't be
         // created twice, so the first blink wins and the rest adopt its result.
@@ -473,8 +488,9 @@ final class PhysicalDisplayToggleService: ObservableObject {
         // Persisted before disabling: if the app dies mid-toggle, recoverStrandedSoftReconnect
         // finds this at the next launch and finishes the job.
         addPendingSoftReconnect(blinkUUID)
-        guard case .success = await setEnabled(false, displayID: startID) else {
-            removePendingSoftReconnect(blinkUUID)
+        let disableResult = await setEnabled(false, displayID: startID)
+        guard case .success = disableResult else {
+            preserveBlinkRecoveryIfUnresolved(disableResult, uuid: blinkUUID, sleepGuard: sleepGuard)
             return false
         }
         // Wait for the framebuffer to actually drop before re-enabling (0.9s ceiling if the event never comes).
@@ -629,6 +645,7 @@ final class PhysicalDisplayToggleService: ObservableObject {
             reconcileWhenSettled = true
             return
         }
+        guard reapplyInFlight.isEmpty else { reconcileWhenSettled = true; return }
         guard !disconnected.isEmpty else { return }
         let onlineIDs = onlineDisplayIDs()
         let onlineUUIDs = Set(onlineIDs.map { uuid(for: $0) })
@@ -663,6 +680,10 @@ final class PhysicalDisplayToggleService: ObservableObject {
                 guard let self else { return }
                 await self.reapplyRemembered(record.uuid)
                 self.reapplyInFlight.remove(record.uuid)
+                if self.reapplyInFlight.isEmpty, self.reconcileWhenSettled, !self.configurationGate.isPending {
+                    self.reconcileWhenSettled = false
+                    self.displayManager?.refreshDisplays()
+                }
             }
         }
     }
@@ -694,20 +715,23 @@ final class PhysicalDisplayToggleService: ObservableObject {
         guard !reconnectInFlight.contains(recordUUID) else { return }
         guard let liveID = onlineDisplayIDs().first(where: { uuid(for: $0) == recordUUID })
         else { return }  // gone again by itself; the record still stands for next time
-        let refused = wouldLeaveNoActiveDisplay(liveID)
+        var refused = wouldLeaveNoActiveDisplay(liveID)
         Self.log.notice("remembered disconnect for \(recordUUID, privacy: .public) id \(liveID, privacy: .public): \(refused ? "refused, it is the last active display" : "re-applying", privacy: .public)")
         var stillOnline = true
         var timedOut = false
         if !refused {
             // Same arrangement-move risk as disconnect() (#108); restore targets the modes
             // from before the display resurfaced (baselineModes), not the ones its own enable produced.
-            let result = await setEnabled(false, displayID: liveID)
+            let result = await setEnabled(false, displayID: liveID, expectedUUID: recordUUID)
             if case .failure(.configurationInProgress) = result {
                 reconcileWhenSettled = true
                 return
             }
             if case .failure(.timedOut) = result {
                 timedOut = true
+            }
+            if case .failure(.wouldLeaveNoActiveDisplay) = result {
+                refused = true
             }
             // Started before the verify below (which can hold for seconds) so the visible flip
             // stays short; a no-op if nothing actually moved.

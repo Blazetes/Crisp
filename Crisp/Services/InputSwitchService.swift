@@ -150,11 +150,21 @@ final class InputSwitchService: ObservableObject {
         let returnInput = toggle.disconnected.first { $0.uuid == uuid }?.returnInput
         let result = await toggle.reconnect(uuid: uuid)
         guard case .success = result, let returnInput else { return result }
-        // One write: the monitor re-links to this Mac (a 1.5 s hot plug drop) when it lands.
-        guard let displayID = Self.onlineDisplayID(uuid: uuid) else { return result }
-        let written = await DDCService.shared.writeInputAfterReconnect(displayID: displayID, value: returnInput)
-        Self.log.notice("display \(uuid, privacy: .public) reconnected, input \(returnInput, privacy: .public) written: \(written, privacy: .public)")
+        await restoreInputAfterReconnect(uuid: uuid, input: returnInput)
         return result
+    }
+
+    func restoreInputAfterReconnect(uuid: String, input: UInt16) async {
+        var target: CGDirectDisplayID?
+        for _ in 0..<20 {
+            target = Self.onlineDisplayID(uuid: uuid)
+            if target != nil { break }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        // One write: the monitor re-links to this Mac (a 1.5 s hot plug drop) when it lands.
+        guard let displayID = target else { return }
+        let written = await DDCService.shared.writeInputAfterReconnect(displayID: displayID, value: input)
+        Self.log.notice("display \(uuid, privacy: .public) reconnected, input \(input, privacy: .public) written: \(written, privacy: .public)")
     }
 
     // MARK: - Private

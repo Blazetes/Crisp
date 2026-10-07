@@ -14,6 +14,7 @@ final class BatchDisplayConnectionService: ObservableObject {
         let id: String
         let name: String
         let error: PhysicalDisplayToggleService.ToggleError
+        var expectedConnected: Bool? = nil
     }
 
     func connectedDisplays(using manager: DisplayManager) -> [DisplayConnectionPlan.Display] {
@@ -71,6 +72,15 @@ final class BatchDisplayConnectionService: ObservableObject {
         _ = await change(uuid: uuid, connect: !entry.isConnected, name: entry.name, using: manager)
     }
 
+    func clearSettledTimeouts(using manager: DisplayManager) {
+        guard !PhysicalDisplayToggleService.shared.configurationInProgress else { return }
+        let online = Set(manager.displays.map(\.displayUUID))
+        failures.removeAll { failure in
+            guard case .timedOut = failure.error, let expected = failure.expectedConnected else { return false }
+            return online.contains(failure.id) == expected
+        }
+    }
+
     private func restoreBuiltinIfNeeded(using manager: DisplayManager) async -> Bool {
         let service = PhysicalDisplayToggleService.shared
         service.holdBuiltinForExternalDisconnect()
@@ -92,7 +102,7 @@ final class BatchDisplayConnectionService: ObservableObject {
             result = await service.disconnect(display)
         }
         if case .failure(let error) = result {
-            failures.append(Failure(id: uuid, name: name, error: error))
+            failures.append(Failure(id: uuid, name: name, error: error, expectedConnected: connect))
             if case .timedOut = error { return false }
             if case .configurationInProgress = error { return false }
             return true
@@ -102,7 +112,7 @@ final class BatchDisplayConnectionService: ObservableObject {
             if manager.displays.contains(where: { $0.displayUUID == uuid }) == connect { return true }
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
-        failures.append(Failure(id: uuid, name: name, error: .timedOut))
+        failures.append(Failure(id: uuid, name: name, error: .timedOut, expectedConnected: connect))
         return false
     }
 }

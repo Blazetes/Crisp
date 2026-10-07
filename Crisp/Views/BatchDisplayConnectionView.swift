@@ -66,6 +66,13 @@ struct BatchDisplayConnectionView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 3)
+            .onAppear { batch.clearSettledTimeouts(using: displayManager) }
+            .onChange(of: service.configurationInProgress) { _, pending in
+                if !pending { batch.clearSettledTimeouts(using: displayManager) }
+            }
+            .onChange(of: state.entries) { _, _ in
+                batch.clearSettledTimeouts(using: displayManager)
+            }
         }
     }
 
