@@ -70,7 +70,7 @@ struct BatchDisplayConnectionView: View {
             .onChange(of: service.configurationInProgress) { _, pending in
                 if !pending { batch.clearSettledTimeouts(using: displayManager) }
             }
-            .onChange(of: state.entries) { _, _ in
+            .onChange(of: displayManager.displays.map(\.displayUUID)) { _, _ in
                 batch.clearSettledTimeouts(using: displayManager)
             }
         }
