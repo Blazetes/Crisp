@@ -1,0 +1,77 @@
+name: Complete Feature Test DMG
+
+on:
+  push:
+    branches: [build/feature-test-dmg]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e1492491621982ac6d3fb0db95c1ad31b72f34e6
+          path: source
+      - uses: actions/checkout@v4
+        with:
+          path: packaging
+      - name: Record toolchain and source
+        working-directory: source
+        run: |
+          git rev-parse HEAD
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-version
+          xcrun swiftc --version
+      - name: Verify translations
+        working-directory: source
+        run: python3 scripts/check-translations.py Crisp/Resources/Localizable.xcstrings
+      - name: Build complete universal app
+        working-directory: source
+        run: ./scripts/release.sh v1.7.0
+      - name: Prepare identified test installer
+        working-directory: source
+        run: |
+          set -euo pipefail
+          APP=build/Crisp.app
+          PLIST="$APP/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName Crisp Feature Test' "$PLIST"
+          /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 17001' "$PLIST"
+          /usr/libexec/PlistBuddy -c 'Set :SUEnableAutomaticChecks false' "$PLIST"
+          /usr/libexec/PlistBuddy -c 'Add :SUAllowsAutomaticUpdates bool false' "$PLIST"
+          /usr/libexec/PlistBuddy -c 'Add :SUAutomaticallyUpdate bool false' "$PLIST"
+          /usr/libexec/PlistBuddy -c 'Add :CrispFeatureSourceRevision string e1492491621982ac6d3fb0db95c1ad31b72f34e6' "$PLIST"
+          mkdir -p build/installer deliverables
+          jq -n --arg source "$(git rev-parse HEAD)" --arg xcode "$(xcodebuild -version)" \
+            --arg sdk "$(xcrun --sdk macosx --show-sdk-version)" --arg built "$(date -u +%FT%TZ)" \
+            '{sourceRevision:$source,xcode:$xcode,sdk:$sdk,builtAt:$built,minimumMacOS:"14.0",architectures:["arm64","x86_64"],signing:"ad-hoc",notarized:false,features:["per-display connection switch","batch connection controls","keep Tools expanded"],automaticUpdateDefaultsDisabled:true}' \
+            > "$APP/Contents/Resources/FeatureBuild.json"
+          codesign --force --sign - --entitlements Crisp/Crisp.entitlements "$APP"
+          codesign --verify --deep --strict "$APP"
+          test -s "$APP/Contents/Resources/Metadata.appintents/extract.actionsdata"
+          test -x "$APP/Contents/MacOS/crispctl"
+          test -d "$APP/Contents/Frameworks/Sparkle.framework"
+          test -s "$APP/Contents/Resources/zh-Hans.lproj/Localizable.strings"
+          test -s "$APP/Contents/Resources/zh-Hant.lproj/Localizable.strings"
+          lipo -verify_arch arm64 x86_64 "$APP/Contents/MacOS/Crisp"
+          lipo -verify_arch arm64 x86_64 "$APP/Contents/MacOS/crispctl"
+          "$APP/Contents/MacOS/crispctl" --help
+          cp "$APP/Contents/Resources/FeatureBuild.json" deliverables/FeatureBuild.json
+          cp ../packaging/docs/FEATURE-TEST-INSTALL.md build/installer/INSTALL-TEST.md
+          ditto "$APP" build/installer/Crisp.app
+          ln -s /Applications build/installer/Applications
+          git archive --format=zip --prefix=Crisp-source/ --output=deliverables/Crisp-feature-test-source-e149249.zip HEAD
+          cp deliverables/Crisp-feature-test-source-e149249.zip build/installer/SourceCode.zip
+          hdiutil create -volname 'Crisp Feature Test' -srcfolder build/installer \
+            -ov -format UDZO deliverables/Crisp-feature-test-e149249.dmg
+          hdiutil verify deliverables/Crisp-feature-test-e149249.dmg
+          shasum -a 256 deliverables/Crisp-feature-test-e149249.dmg \
+            deliverables/Crisp-feature-test-source-e149249.zip > deliverables/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Crisp-complete-feature-test-e149249
+          path: source/deliverables/
+          retention-days: 30
