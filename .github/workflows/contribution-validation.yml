@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [display-connection-switch]
+        feature: [batch-display-connections]
     steps:
       - uses: actions/checkout@v4
         with:
