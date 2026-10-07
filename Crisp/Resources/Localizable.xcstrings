@@ -581,8 +581,18 @@
     },
     "All Displays Connected" : {
       "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "连接所有显示器" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連線所有顯示器" } }
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连接所有显示器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連線所有顯示器"
+          }
+        }
       }
     },
     "All connected displays" : {
@@ -1551,8 +1561,18 @@
     },
     "Disconnect All Displays" : {
       "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "断开所有显示器" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "中斷所有顯示器連線" } }
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "断开所有显示器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中斷所有顯示器連線"
+          }
+        }
       }
     },
     "Disconnect Display" : {
@@ -2330,12 +2350,6 @@
         }
       }
     },
-    "Keeps one physical display connected." : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保留一块实体显示器连接。" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "保留一台實體顯示器連線。" } }
-      }
-    },
     "Keep Awake" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2429,6 +2443,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "命令列工具"
+          }
+        }
+      }
+    },
+    "Keeps one physical display connected." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保留一块实体显示器连接。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保留一台實體顯示器連線。"
           }
         }
       }
@@ -3137,8 +3167,18 @@
     },
     "Reconnect All Displays" : {
       "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重新连接所有显示器" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重新連線所有顯示器" } }
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新连接所有显示器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新連線所有顯示器"
+          }
+        }
       }
     },
     "Reconnect Display" : {
