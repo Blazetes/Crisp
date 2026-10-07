@@ -34,7 +34,7 @@ struct DisconnectDisplayRow: View {
                 .overlay(alignment: .trailing) {
                     if busy {
                         ProgressView().scaleEffect(0.6).frame(width: 16, height: 16)
-                            .padding(.trailing, 12)
+                            .frame(width: 32, height: 20)
                     }
                 }
                 .padding(.horizontal, 12)
@@ -161,7 +161,7 @@ private struct DisconnectedDisplayRow: View {
         .overlay(alignment: .trailing) {
             if busy {
                 ProgressView().scaleEffect(0.6).frame(width: 16, height: 16)
-                    .padding(.trailing, 12)
+                    .frame(width: 32, height: 20)
             }
         }
         .padding(.horizontal, 12)
