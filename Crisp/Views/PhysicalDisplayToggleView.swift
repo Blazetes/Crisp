@@ -142,17 +142,18 @@ private struct DisconnectedDisplayRow: View {
             }
         )) {
             HStack(spacing: 8) {
-                MenuItemIcon(systemName: "rectangle.slash", color: .secondary, active: false)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(record.name).font(.body).lineLimit(1)
-                    Text(verbatim: "\(record.width)×\(record.height)")
-                        .font(.caption2).foregroundColor(.secondary)
+                HStack(spacing: 8) {
+                    MenuItemIcon(systemName: "rectangle.slash", color: .secondary, active: false)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(record.name).font(.body).lineLimit(1)
+                        Text(verbatim: "\(record.width)×\(record.height)")
+                            .font(.caption2).foregroundColor(.secondary)
+                    }
                 }
+                .opacity(isHovered ? 1 : 0.6)
+                Spacer()
             }
-            .opacity(isHovered ? 1 : 0.6)
-
-            Spacer()
-
         }
         .toggleStyle(.switch)
         .controlSize(.small)
