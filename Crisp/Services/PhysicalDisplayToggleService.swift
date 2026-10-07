@@ -140,7 +140,7 @@ final class PhysicalDisplayToggleService: ObservableObject {
     /// don't count: a headless virtual left alone still blacks out the physical machine.
     func wouldLeaveNoActiveDisplay(_ displayID: CGDirectDisplayID) -> Bool {
         let active = viewableActiveDisplays().filter { !isDisconnected(uuid: uuid(for: $0)) }
-        return CGDisplayIsActive(displayID) != 0 && active.count <= 1
+        return active.isEmpty || (CGDisplayIsActive(displayID) != 0 && active.count <= 1)
     }
 
     /// All display IDs known to the window server, INCLUDING ones disabled via

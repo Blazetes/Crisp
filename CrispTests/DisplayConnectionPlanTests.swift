@@ -30,7 +30,22 @@ final class DisplayConnectionPlanTests: XCTestCase {
             .init(uuid: "physical")
         ]
         let plan = DisplayConnectionPlan.make(action: .disconnectAll, connected: topology, disconnected: ["held-builtin"])
-        XCTAssertTrue(plan.disconnectUUIDs.isEmpty)
+        XCTAssertEqual(plan.disconnectUUIDs, ["sleeping-builtin"])
+    }
+
+    func testMirrorTargetDisconnectsWhileTheOnlyActiveScreenIsKept() {
+        let topology: [DisplayConnectionPlan.Display] = [
+            .init(uuid: "source", isBuiltin: true),
+            .init(uuid: "mirror-target", isActive: false)
+        ]
+        let plan = DisplayConnectionPlan.make(action: .disconnectAll, connected: topology, disconnected: [])
+        XCTAssertEqual(plan.disconnectUUIDs, ["mirror-target"])
+        XCTAssertTrue(plan.reconnectUUIDs.isEmpty)
+    }
+
+    func testNoActiveKeeperMeansNothingIsDisconnected() {
+        let topology: [DisplayConnectionPlan.Display] = [.init(uuid: "sleeping", isActive: false)]
+        XCTAssertTrue(DisplayConnectionPlan.make(action: .disconnectAll, connected: topology, disconnected: []).disconnectUUIDs.isEmpty)
     }
 
     func testMixedStateToggleReconnectsAllAndDeduplicatesRecords() {

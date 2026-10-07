@@ -23,8 +23,11 @@ struct DisplayConnectionPlan: Equatable {
             return Self(reconnectUUIDs: held, disconnectUUIDs: [])
         }
         seen = Set(held)
-        let active = connected.filter { !$0.isVirtual && $0.isActive && seen.insert($0.uuid).inserted }
-        let keeper = active.first(where: { $0.isBuiltin }) ?? active.first(where: { $0.isMain }) ?? active.first
-        return Self(reconnectUUIDs: [], disconnectUUIDs: active.filter { $0.uuid != keeper?.uuid }.map(\.uuid))
+        let physical = connected.filter { !$0.isVirtual && seen.insert($0.uuid).inserted }
+        let active = physical.filter(\.isActive)
+        guard let keeper = active.first(where: { $0.isBuiltin }) ?? active.first(where: { $0.isMain }) ?? active.first else {
+            return Self(reconnectUUIDs: [], disconnectUUIDs: [])
+        }
+        return Self(reconnectUUIDs: [], disconnectUUIDs: physical.filter { $0.uuid != keeper.uuid }.map(\.uuid))
     }
 }

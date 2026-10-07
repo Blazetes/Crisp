@@ -11,7 +11,14 @@ struct BatchDisplayConnectionView: View {
     }
 
     private var canDisconnect: Bool {
-        physicalDisplays.contains { !service.wouldLeaveNoActiveDisplay($0.displayID) && CGDisplayIsActive($0.displayID) != 0 }
+        !DisplayConnectionPlan.make(
+            action: .disconnectAll,
+            connected: physicalDisplays.map {
+                .init(uuid: $0.displayUUID, isBuiltin: $0.isBuiltin, isMain: $0.isMain,
+                      isActive: CGDisplayIsActive($0.displayID) != 0)
+            },
+            disconnected: service.disconnected.map(\.uuid)
+        ).disconnectUUIDs.isEmpty
     }
 
     var body: some View {
