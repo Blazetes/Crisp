@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 48b9d84b1ef07efae172f05a99e23cef853bde28
+          ref: 57d65b5c5da1fc35d54967022cdae3f57dbdc1d1
           path: source
       - uses: actions/checkout@v4
         with:
@@ -38,12 +38,17 @@ jobs:
         run: ruby packaging/scripts/contribution-preview/prepare.rb source batch-display-connections packaging/build/named-preview
       - uses: actions/upload-artifact@v4
         with:
-          name: named-external-preview-48b9d84
+          name: named-external-preview-57d65b5
           path: packaging/build/named-preview/*.png
           retention-days: 30
       - name: Build complete universal app
         working-directory: source
         run: ./scripts/release.sh v1.7.0
+      - name: Verify compiled image in full app
+        working-directory: source
+        run: |
+          mkdir -p ../packaging/build/packaged-icon
+          ../packaging/build/named-preview/Fixture.app/Contents/MacOS/Fixture --check-app-assets "$PWD/build/Crisp.app" ../packaging/build/packaged-icon
       - name: Prepare identified test installer
         working-directory: source
         run: |
@@ -51,18 +56,19 @@ jobs:
           APP=build/Crisp.app
           PLIST="$APP/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName Crisp Feature Test' "$PLIST"
-          /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 17003' "$PLIST"
+          /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 17004' "$PLIST"
           /usr/libexec/PlistBuddy -c 'Set :SUEnableAutomaticChecks false' "$PLIST"
           /usr/libexec/PlistBuddy -c 'Add :SUAllowsAutomaticUpdates bool false' "$PLIST"
           /usr/libexec/PlistBuddy -c 'Add :SUAutomaticallyUpdate bool false' "$PLIST"
-          /usr/libexec/PlistBuddy -c 'Add :CrispFeatureSourceRevision string 48b9d84b1ef07efae172f05a99e23cef853bde28' "$PLIST"
+          /usr/libexec/PlistBuddy -c 'Add :CrispFeatureSourceRevision string 57d65b5c5da1fc35d54967022cdae3f57dbdc1d1' "$PLIST"
           mkdir -p build/installer deliverables
           jq -n --arg source "$(git rev-parse HEAD)" --arg xcode "$(xcodebuild -version)" \
             --arg sdk "$(xcrun --sdk macosx --show-sdk-version)" --arg built "$(date -u +%FT%TZ)" \
-            '{sourceRevision:$source,xcode:$xcode,sdk:$sdk,builtAt:$built,minimumMacOS:"14.0",architectures:["arm64","x86_64"],signing:"ad-hoc",notarized:false,features:["per-display connection switch","external-only named batch control: four columns","keep Tools expanded"],automaticUpdateDefaultsDisabled:true}' \
+            '{sourceRevision:$source,xcode:$xcode,sdk:$sdk,builtAt:$built,minimumMacOS:"14.0",architectures:["arm64","x86_64"],signing:"ad-hoc",notarized:false,features:["per-display connection switch","external-only named batch control: four columns","keep Tools expanded","equal 16:9 diagonal template SVG menu icon"],automaticUpdateDefaultsDisabled:true}' \
             > "$APP/Contents/Resources/FeatureBuild.json"
           codesign --force --sign - --entitlements Crisp/Crisp.entitlements "$APP"
           codesign --verify --deep --strict "$APP"
+          test -s "$APP/Contents/Resources/Assets.car"
           test -s "$APP/Contents/Resources/Metadata.appintents/extract.actionsdata"
           test -x "$APP/Contents/MacOS/crispctl"
           test -d "$APP/Contents/Frameworks/Sparkle.framework"
@@ -75,23 +81,24 @@ jobs:
           cp ../packaging/docs/FEATURE-TEST-INSTALL.md build/installer/INSTALL-TEST.md
           ditto "$APP" build/installer/Crisp.app
           ln -s /Applications build/installer/Applications
-          git archive --format=zip --prefix=Crisp-source/ --output=deliverables/Crisp-named-external-source-48b9d84.zip HEAD
-          cp deliverables/Crisp-named-external-source-48b9d84.zip build/installer/SourceCode.zip
+          git archive --format=zip --prefix=Crisp-source/ --output=deliverables/Crisp-svg-icon-source-57d65b5.zip HEAD
+          cp deliverables/Crisp-svg-icon-source-57d65b5.zip build/installer/SourceCode.zip
           hdiutil create -volname 'Crisp Feature Test' -srcfolder build/installer \
-            -ov -format UDZO deliverables/Crisp-named-external-48b9d84.dmg
-          hdiutil verify deliverables/Crisp-named-external-48b9d84.dmg
-          shasum -a 256 deliverables/Crisp-named-external-48b9d84.dmg \
-            deliverables/Crisp-named-external-source-48b9d84.zip > deliverables/SHA256SUMS.txt
+            -ov -format UDZO deliverables/Crisp-svg-icon-57d65b5.dmg
+          hdiutil verify deliverables/Crisp-svg-icon-57d65b5.dmg
+          shasum -a 256 deliverables/Crisp-svg-icon-57d65b5.dmg \
+            deliverables/Crisp-svg-icon-source-57d65b5.zip > deliverables/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: Crisp-named-external-48b9d84
+          name: Crisp-svg-icon-57d65b5
           path: source/deliverables/
           retention-days: 30
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: named-external-verification-48b9d84
+          name: named-external-verification-57d65b5
           path: |
             packaging/build/named-preview/*.png
+            packaging/build/packaged-icon/*.png
             source/build/*.xcresult
           retention-days: 30

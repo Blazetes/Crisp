@@ -39,6 +39,11 @@ File.write(File.join(app, 'Contents/Info.plist'), <<~PLIST)
   <key>LSUIElement</key><true/>
   </dict></plist>
 PLIST
+if feature == 'batch-display-connections'
+  abort 'Vector asset compilation failed' unless system('xcrun', 'actool', File.join(source, 'Crisp/Assets.xcassets'),
+    '--compile', resources, '--platform', 'macosx', '--target-device', 'mac', '--minimum-deployment-target', '14.0',
+    '--app-icon', 'AppIcon', '--output-partial-info-plist', File.join(output, 'FixtureAssets.plist'))
+end
 catalog = JSON.parse(File.read(File.join(source, 'Crisp/Resources/Localizable.xcstrings')))
 %w[en zh-Hans zh-Hant].each do |language|
   directory = File.join(resources, "#{language}.lproj")
@@ -72,7 +77,7 @@ if feature == 'keep-tools-expanded'
   abort 'Preference reload failed' unless system(binary, '--read-preference')
 end
 if feature == 'batch-display-connections'
-  abort 'Batch service checks failed' unless system(binary, '--check-batch')
+  abort 'Batch service checks failed' unless system(binary, '--check-batch', output)
   %w[en zh-Hans zh-Hant].each do |language|
     [1, 2, 3, 4, 5, 8].each do |count|
       abort 'UI rendering failed' unless system(binary, File.join(output, "#{language}-#{count}.png"), count.to_s, 'connected', '-AppleLanguages', "(#{language})")

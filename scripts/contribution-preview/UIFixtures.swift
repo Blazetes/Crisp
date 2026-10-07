@@ -205,7 +205,18 @@ struct UIFixtures {
         application.setActivationPolicy(.accessory)
         let manager = DisplayManager()
         #if FEATURE_BATCH
+        if CommandLine.arguments.contains("--check-app-assets") {
+            guard let bundle = Bundle(path: CommandLine.arguments[2]),
+                  let image = bundle.image(forResource: "ExternalDisplayConnection") else {
+                fatalError("SVG menu image missing from packaged app")
+            }
+            try verifyIcon(image, output: CommandLine.arguments[3])
+            print("Packaged app SVG image resolves from its own asset catalog")
+            return
+        }
+        guard let menuIcon = NSImage(named: "ExternalDisplayConnection") else { fatalError("SVG menu asset is missing") }
         if CommandLine.arguments.contains("--check-batch") {
+            try verifyIcon(menuIcon, output: CommandLine.arguments[2])
             await verifyBatch(using: manager)
             return
         }
@@ -251,6 +262,36 @@ struct UIFixtures {
     }
 
     #if FEATURE_BATCH
+    @MainActor
+    private static func verifyIcon(_ image: NSImage, output: String) throws {
+        precondition(image.size == NSSize(width: 24, height: 24))
+        for size in [16, 20, 24, 32] {
+            guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: size, pixelsHigh: size,
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                bytesPerRow: 0, bitsPerPixel: 0), let context = NSGraphicsContext(bitmapImageRep: bitmap)
+            else { fatalError("Icon bitmap allocation failed") }
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = context
+            context.cgContext.clear(CGRect(x: 0, y: 0, width: size, height: size))
+            image.draw(in: NSRect(x: 0, y: 0, width: size, height: size))
+            NSGraphicsContext.restoreGraphicsState()
+            var visible = 0
+            for y in 0..<size {
+                for x in 0..<size {
+                    let alpha = bitmap.colorAt(x: x, y: y)?.alphaComponent ?? 0
+                    if alpha > 0.001 { visible += 1 }
+                    if x == 0 || y == 0 || x == size - 1 || y == size - 1 {
+                        precondition(alpha < 0.001, "SVG icon clips or has a background")
+                    }
+                }
+            }
+            precondition(visible > size && visible < size * size / 2, "Blank or filled SVG icon")
+            guard let png = bitmap.representation(using: .png, properties: [:]) else { fatalError("Icon PNG failed") }
+            try png.write(to: URL(fileURLWithPath: output).appendingPathComponent("native-icon-\(size).png"))
+        }
+        print("Compiled SVG image resolves and renders at 16/20/24/32 with transparent borders")
+    }
+
     @MainActor
     private static func verifyBatch(using manager: DisplayManager) async {
         let physical = PhysicalDisplayToggleService.shared
