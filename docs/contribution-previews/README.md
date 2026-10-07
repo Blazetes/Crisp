@@ -1,5 +1,11 @@
 # Display-control contribution previews
 
+## Local Xcode 27 Validation (2026-10-08)
+
+The single-display previews now render source `8570f4cc4ab9d19984c447dabbd379ef0b4212f5`. Its exact-source local `make check`, Chinese translations, complete universal release dry run (`v0.0.0-ci`), deep signature/DMG checks and three-language native fixture rendering passed with Xcode 27.0 / SDK 27.0.
+
+The physical backend guards remain active until blocking transactions actually finish, including after a UI timeout. Live display changes, clamshell/sleep recovery and installed-app interaction have not been tested. Earlier validation links below describe their explicitly listed revisions.
+
 These PNGs render the contribution branches' native SwiftUI views at Crisp's 308-point panel width, in English, Simplified Chinese, and Traditional Chinese.
 
 Display and input services are fixtures. They do not change real monitor connections. The Tools-preference fixture uses the production SettingsService and PanelSectionState with inert hardware services, and verifies persistence across separate process launches and section reset behavior.
