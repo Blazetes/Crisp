@@ -1,0 +1,45 @@
+name: Contribution Validation
+
+on:
+  push:
+    branches: [verify/display-features]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        feature: [display-connection-switch, batch-display-connections, keep-tools-expanded]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/${{ matrix.feature }}
+          path: source
+      - uses: actions/checkout@v4
+        with:
+          path: tooling
+      - name: Install validation tools
+        run: HOMEBREW_NO_AUTO_UPDATE=1 brew install swiftlint xcodegen
+      - name: Run upstream checks
+        working-directory: source
+        run: make check
+      - name: Compile app
+        working-directory: source
+        run: make compile
+      - name: Check translations
+        working-directory: source
+        run: python3 scripts/check-translations.py Crisp/Resources/Localizable.xcstrings
+      - name: Render native UI fixtures
+        run: ruby tooling/scripts/contribution-preview/prepare.rb source ${{ matrix.feature }} build/preview
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.feature }}-evidence
+          path: |
+            source/build/*.xcresult
+            build/preview/*.png
+            build/preview/*.log
