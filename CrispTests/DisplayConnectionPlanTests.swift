@@ -30,7 +30,7 @@ final class DisplayConnectionPlanTests: XCTestCase {
             .init(uuid: "physical")
         ]
         let plan = DisplayConnectionPlan.make(action: .disconnectAll, connected: topology, disconnected: ["held-builtin"])
-        XCTAssertEqual(plan.disconnectUUIDs, ["sleeping-builtin"])
+        XCTAssertTrue(plan.disconnectUUIDs.isEmpty)
     }
 
     func testMirrorTargetDisconnectsWhileTheOnlyActiveScreenIsKept() {
@@ -66,5 +66,22 @@ final class DisplayConnectionPlanTests: XCTestCase {
         for topology in topologies {
             XCTAssertTrue(DisplayConnectionPlan.make(action: .disconnectAll, connected: topology, disconnected: []).disconnectUUIDs.isEmpty)
         }
+    }
+
+    func testOneToEightExternalsDisconnectWithoutTargetingAnyBuiltin() {
+        for count in 1...8 {
+            let externals = (0..<count).map { DisplayConnectionPlan.Display(uuid: "external-\($0)") }
+            let topology = externals + [.init(uuid: "builtin", isBuiltin: true),
+                                        .init(uuid: "inactive-builtin", isBuiltin: true, isActive: false)]
+            let plan = DisplayConnectionPlan.make(action: .disconnectAll, connected: topology, disconnected: [])
+            XCTAssertEqual(plan.disconnectUUIDs, externals.map(\.uuid))
+        }
+    }
+
+    func testReconnectAllExcludesKnownAndHeldBuiltins() {
+        let plan = DisplayConnectionPlan.make(action: .reconnectAll, connected: displays,
+                                             disconnected: ["builtin", "held-builtin", "external", "external"],
+                                             builtinUUIDs: ["held-builtin"])
+        XCTAssertEqual(plan.reconnectUUIDs, ["external"])
     }
 }

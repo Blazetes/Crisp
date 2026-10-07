@@ -87,6 +87,7 @@ targets:
       - path: Crisp/Models/EdgeCrossing.swift
       - path: Crisp/Models/DDCInputSource.swift
       - path: Crisp/Models/DisplayConnectionPlan.swift
+      - path: Crisp/Models/ExternalDisplayConnectionState.swift
       - path: Crisp/Models/DisplayConnectionQueue.swift
     settings:
       base:

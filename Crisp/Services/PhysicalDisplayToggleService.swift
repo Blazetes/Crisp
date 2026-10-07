@@ -136,6 +136,21 @@ final class PhysicalDisplayToggleService: ObservableObject {
         disconnected.contains { $0.uuid == uuid }
     }
 
+    func isBuiltinDisconnectedDisplay(_ record: DisconnectedDisplay) -> Bool {
+        wasBuiltin(record, id: resolveCurrentID(for: record) ?? record.displayID)
+    }
+
+    func isAvailableForReconnect(_ record: DisconnectedDisplay) -> Bool {
+        resolveCurrentID(for: record) != nil
+    }
+
+    /// An explicit external shutdown takes precedence over dock automation until undock.
+    func holdBuiltinForExternalDisconnect() {
+        guard Self.hasBattery else { return }
+        standDownUntilUndock = true
+        setParked(nil)
+    }
+
     /// True if disconnecting `display` now would leave no *viewable* screen. Virtual displays
     /// don't count: a headless virtual left alone still blacks out the physical machine.
     func wouldLeaveNoActiveDisplay(_ displayID: CGDirectDisplayID) -> Bool {
