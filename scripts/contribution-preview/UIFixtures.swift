@@ -35,6 +35,7 @@ final class PhysicalDisplayToggleService: ObservableObject {
     static let hasBattery = true
     let isSupported = true
     @Published var disconnected: [DisconnectedDisplay] = []
+    @Published var configurationInProgress = false
     var unavailable: Set<String> = []
     var disconnectedUUIDs: [String] = []
     var restoredUUIDs: [String] = []
@@ -50,6 +51,7 @@ final class PhysicalDisplayToggleService: ObservableObject {
     }
     enum ToggleError: Error, Sendable {
         case timedOut
+        case configurationInProgress
         var description: String { "Fixture failure" }
     }
     func isDisconnected(uuid: String) -> Bool { disconnected.contains { $0.uuid == uuid } }
@@ -245,6 +247,7 @@ struct UIFixtures {
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless],
                               backing: .buffered, defer: false)
         window.contentView = hosting
+        window.setFrameOrigin(NSPoint(x: -10000, y: -10000))
         window.orderFront(nil)
         try await Task.sleep(nanoseconds: 500_000_000)
         hosting.layoutSubtreeIfNeeded()
@@ -331,7 +334,14 @@ struct UIFixtures {
         _ = await batch.perform(.disconnectAll, using: manager)
         precondition(batch.failures.count == 1 && !batch.isBusy && physical.disconnectedUUIDs.count == 1)
         precondition(manager.displays.count == 5, "Failure must not show false disconnected state")
+        batch.clearSettledTimeouts(using: manager)
+        precondition(batch.failures.count == 1, "Unresolved timeout must remain visible")
         physical.failUUID = nil
+        physical.disconnected = [.init(uuid: "external-0", name: "Monitor 0")]
+        manager.refreshDisplays()
+        batch.clearSettledTimeouts(using: manager)
+        precondition(batch.failures.isEmpty, "Late success must clear a settled timeout")
+        _ = await batch.perform(.reconnectAll, using: manager)
         manager.availableDisplays = externals
         manager.refreshDisplays()
         _ = await batch.perform(.disconnectAll, using: manager)
