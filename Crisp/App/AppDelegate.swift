@@ -697,6 +697,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
                 EdgeCrossingRow()
                 DisconnectBuiltinRow()
+                BatchDisplayConnectionView()
                 ExpandableRowStateful(icon: "display.2", iconActive: false,
                                       label: "Virtual Displays", state: state, key: \.showVirtualDisplays)
             }

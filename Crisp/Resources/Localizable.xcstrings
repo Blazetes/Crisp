@@ -579,6 +579,12 @@
         }
       }
     },
+    "All Displays Connected" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "连接所有显示器" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連線所有顯示器" } }
+      }
+    },
     "All connected displays" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1543,6 +1549,12 @@
         }
       }
     },
+    "Disconnect All Displays" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "断开所有显示器" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "中斷所有顯示器連線" } }
+      }
+    },
     "Disconnect Display" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2332,6 +2344,12 @@
             "value" : "反相顏色"
           }
         }
+      }
+    },
+    "Keeps one physical display connected." : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保留一块实体显示器连接。" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "保留一台實體顯示器連線。" } }
       }
     },
     "Keep Awake" : {
@@ -3131,6 +3149,12 @@
             "value" : "重新連接 ${display}"
           }
         }
+      }
+    },
+    "Reconnect All Displays" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重新连接所有显示器" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重新連線所有顯示器" } }
       }
     },
     "Reconnect Display" : {

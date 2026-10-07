@@ -21,6 +21,7 @@ final class PhysicalDisplayToggleService: ObservableObject {
     /// Set by DisplayManager at launch. The restore below needs a DisplayInfo to read and put
     /// back a display's HDR switch, and this service otherwise works from CGDirectDisplayIDs.
     weak var displayManager: DisplayManager?
+    private let connectionQueue = DisplayConnectionQueue()
 
     /// Snapshot of a display we disconnected, kept because a disconnected display no longer
     /// appears in DisplayManager.displays, so we need its metadata to render a Reconnect row.
@@ -138,7 +139,8 @@ final class PhysicalDisplayToggleService: ObservableObject {
     /// True if disconnecting `display` now would leave no *viewable* screen. Virtual displays
     /// don't count: a headless virtual left alone still blacks out the physical machine.
     func wouldLeaveNoActiveDisplay(_ displayID: CGDirectDisplayID) -> Bool {
-        CGDisplayIsActive(displayID) != 0 && physicalActiveDisplayCount() <= 1
+        let active = viewableActiveDisplays().filter { !isDisconnected(uuid: uuid(for: $0)) }
+        return CGDisplayIsActive(displayID) != 0 && active.count <= 1
     }
 
     /// All display IDs known to the window server, INCLUDING ones disabled via
@@ -240,6 +242,10 @@ final class PhysicalDisplayToggleService: ObservableObject {
     /// would leave zero active displays, so the user can never black out their only screen.
     @discardableResult
     func disconnect(_ display: DisplayInfo, returnInput: UInt16? = nil) async -> Result<Void, ToggleError> {
+        await connectionQueue.run { await self.performDisconnect(display, returnInput: returnInput) }
+    }
+
+    private func performDisconnect(_ display: DisplayInfo, returnInput: UInt16?) async -> Result<Void, ToggleError> {
         guard isSupported else { return .failure(.unsupportedPlatform) }
         let displayID = display.displayID
         if wouldLeaveNoActiveDisplay(displayID) { return .failure(.wouldLeaveNoActiveDisplay) }
@@ -351,6 +357,10 @@ final class PhysicalDisplayToggleService: ObservableObject {
     /// the Tools switch off until the next undock.
     @discardableResult
     func reconnect(uuid: String, byUser: Bool = true) async -> Result<Void, ToggleError> {
+        await connectionQueue.run { await self.performReconnect(uuid: uuid, byUser: byUser) }
+    }
+
+    private func performReconnect(uuid: String, byUser: Bool) async -> Result<Void, ToggleError> {
         guard isSupported else { return .failure(.unsupportedPlatform) }
         guard let record = disconnected.first(where: { $0.uuid == uuid }) else {
             return .failure(.displayNotFound)
