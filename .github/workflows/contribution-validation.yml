@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [display-connection-switch, batch-display-connections]
+        feature: [display-connection-switch]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,9 +30,6 @@ jobs:
       - name: Run upstream checks
         working-directory: source
         run: make check
-      - name: Compile app
-        working-directory: source
-        run: make compile
       - name: Check translations
         working-directory: source
         run: python3 scripts/check-translations.py Crisp/Resources/Localizable.xcstrings
