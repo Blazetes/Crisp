@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: e1492491621982ac6d3fb0db95c1ad31b72f34e6
+          ref: 19f327c7fcfd5563516b8160dfd6c4ec4ffea82d
           path: source
       - uses: actions/checkout@v4
         with:
@@ -29,6 +29,13 @@ jobs:
       - name: Verify translations
         working-directory: source
         run: python3 scripts/check-translations.py Crisp/Resources/Localizable.xcstrings
+      - name: Install validation tools
+        run: HOMEBREW_NO_AUTO_UPDATE=1 brew install swiftlint xcodegen
+      - name: Run full upstream checks
+        working-directory: source
+        run: make check
+      - name: Render named external UI and verify batch service
+        run: ruby packaging/scripts/contribution-preview/prepare.rb source batch-display-connections packaging/build/named-preview
       - name: Build complete universal app
         working-directory: source
         run: ./scripts/release.sh v1.7.0
@@ -39,15 +46,15 @@ jobs:
           APP=build/Crisp.app
           PLIST="$APP/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName Crisp Feature Test' "$PLIST"
-          /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 17001' "$PLIST"
+          /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 17002' "$PLIST"
           /usr/libexec/PlistBuddy -c 'Set :SUEnableAutomaticChecks false' "$PLIST"
           /usr/libexec/PlistBuddy -c 'Add :SUAllowsAutomaticUpdates bool false' "$PLIST"
           /usr/libexec/PlistBuddy -c 'Add :SUAutomaticallyUpdate bool false' "$PLIST"
-          /usr/libexec/PlistBuddy -c 'Add :CrispFeatureSourceRevision string e1492491621982ac6d3fb0db95c1ad31b72f34e6' "$PLIST"
+          /usr/libexec/PlistBuddy -c 'Add :CrispFeatureSourceRevision string 19f327c7fcfd5563516b8160dfd6c4ec4ffea82d' "$PLIST"
           mkdir -p build/installer deliverables
           jq -n --arg source "$(git rev-parse HEAD)" --arg xcode "$(xcodebuild -version)" \
             --arg sdk "$(xcrun --sdk macosx --show-sdk-version)" --arg built "$(date -u +%FT%TZ)" \
-            '{sourceRevision:$source,xcode:$xcode,sdk:$sdk,builtAt:$built,minimumMacOS:"14.0",architectures:["arm64","x86_64"],signing:"ad-hoc",notarized:false,features:["per-display connection switch","batch connection controls","keep Tools expanded"],automaticUpdateDefaultsDisabled:true}' \
+            '{sourceRevision:$source,xcode:$xcode,sdk:$sdk,builtAt:$built,minimumMacOS:"14.0",architectures:["arm64","x86_64"],signing:"ad-hoc",notarized:false,features:["per-display connection switch","external-only named batch control: four columns","keep Tools expanded"],automaticUpdateDefaultsDisabled:true}' \
             > "$APP/Contents/Resources/FeatureBuild.json"
           codesign --force --sign - --entitlements Crisp/Crisp.entitlements "$APP"
           codesign --verify --deep --strict "$APP"
@@ -63,15 +70,23 @@ jobs:
           cp ../packaging/docs/FEATURE-TEST-INSTALL.md build/installer/INSTALL-TEST.md
           ditto "$APP" build/installer/Crisp.app
           ln -s /Applications build/installer/Applications
-          git archive --format=zip --prefix=Crisp-source/ --output=deliverables/Crisp-feature-test-source-e149249.zip HEAD
-          cp deliverables/Crisp-feature-test-source-e149249.zip build/installer/SourceCode.zip
+          git archive --format=zip --prefix=Crisp-source/ --output=deliverables/Crisp-named-external-source-19f327c.zip HEAD
+          cp deliverables/Crisp-named-external-source-19f327c.zip build/installer/SourceCode.zip
           hdiutil create -volname 'Crisp Feature Test' -srcfolder build/installer \
-            -ov -format UDZO deliverables/Crisp-feature-test-e149249.dmg
-          hdiutil verify deliverables/Crisp-feature-test-e149249.dmg
-          shasum -a 256 deliverables/Crisp-feature-test-e149249.dmg \
-            deliverables/Crisp-feature-test-source-e149249.zip > deliverables/SHA256SUMS.txt
+            -ov -format UDZO deliverables/Crisp-named-external-19f327c.dmg
+          hdiutil verify deliverables/Crisp-named-external-19f327c.dmg
+          shasum -a 256 deliverables/Crisp-named-external-19f327c.dmg \
+            deliverables/Crisp-named-external-source-19f327c.zip > deliverables/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: Crisp-complete-feature-test-e149249
+          name: Crisp-named-external-19f327c
           path: source/deliverables/
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: named-external-verification-19f327c
+          path: |
+            packaging/build/named-preview/*.png
+            source/build/*.xcresult
           retention-days: 30
