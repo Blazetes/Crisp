@@ -8,6 +8,7 @@ final class BatchDisplayConnectionService: ObservableObject {
     private init() {}
 
     @Published private(set) var isBusy = false
+    @Published private(set) var failures: [Failure] = []
 
     struct Failure: Identifiable {
         let id: String
@@ -16,8 +17,9 @@ final class BatchDisplayConnectionService: ObservableObject {
     }
 
     func perform(_ action: DisplayConnectionPlan.Action, using manager: DisplayManager) async -> [Failure] {
-        guard !isBusy else { return [] }
+        guard !isBusy else { return failures }
         isBusy = true
+        failures = []
         defer { isBusy = false; manager.refreshDisplays() }
 
         let service = PhysicalDisplayToggleService.shared
@@ -31,7 +33,6 @@ final class BatchDisplayConnectionService: ObservableObject {
             },
             disconnected: records.map(\.uuid)
         )
-        var failures: [Failure] = []
         for uuid in plan.reconnectUUIDs {
             let result = await InputSwitchService.shared.reconnect(uuid: uuid)
             manager.refreshDisplays()

@@ -5,7 +5,6 @@ struct BatchDisplayConnectionView: View {
     @EnvironmentObject private var displayManager: DisplayManager
     @ObservedObject private var service = PhysicalDisplayToggleService.shared
     @ObservedObject private var batch = BatchDisplayConnectionService.shared
-    @State private var failures: [BatchDisplayConnectionService.Failure] = []
 
     private var physicalDisplays: [DisplayInfo] {
         displayManager.displays.filter { !VirtualDisplayService.shared.isVirtualDisplay($0.displayID) }
@@ -44,7 +43,7 @@ struct BatchDisplayConnectionView: View {
                 if batch.isBusy {
                     ProgressView().controlSize(.small).padding(.horizontal, 12)
                 }
-                ForEach(failures) { failure in
+                ForEach(batch.failures) { failure in
                     Text(verbatim: "\(failure.name): \(failure.error.description)")
                         .font(.caption)
                         .foregroundColor(.red)
@@ -58,9 +57,8 @@ struct BatchDisplayConnectionView: View {
 
     private func run(_ action: DisplayConnectionPlan.Action) {
         guard PanelOpenGuard.allowsActivation, !batch.isBusy else { return }
-        failures = []
         Task { @MainActor in
-            failures = await batch.perform(action, using: displayManager)
+            _ = await batch.perform(action, using: displayManager)
         }
     }
 }

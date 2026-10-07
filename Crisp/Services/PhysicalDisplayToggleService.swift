@@ -247,7 +247,9 @@ final class PhysicalDisplayToggleService: ObservableObject {
 
     private func performDisconnect(_ display: DisplayInfo, returnInput: UInt16?) async -> Result<Void, ToggleError> {
         guard isSupported else { return .failure(.unsupportedPlatform) }
-        let displayID = display.displayID
+        guard let displayID = onlineDisplayIDs().first(where: { uuid(for: $0) == display.displayUUID }) else {
+            return .failure(.displayNotFound)
+        }
         if wouldLeaveNoActiveDisplay(displayID) { return .failure(.wouldLeaveNoActiveDisplay) }
 
         // A new click adds this dock's externals to the ones a parked record already knew.
