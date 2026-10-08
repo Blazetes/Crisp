@@ -7,22 +7,29 @@ on:
 permissions:
   contents: read
 
+env:
+  SOURCE_REVISION: 880faf98b5df3faf264265668844b5db056c683d
+  TEST_BUILD: "17007"
+  ARTIFACT_NAME: Crisp-feature-test-880faf9-17007
+
 jobs:
   package:
     runs-on: macos-26
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
-          ref: 57d65b5c5da1fc35d54967022cdae3f57dbdc1d1
+          ref: ${{ env.SOURCE_REVISION }}
           path: source
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           path: packaging
       - name: Record toolchain and source
         working-directory: source
         run: |
           git rev-parse HEAD
+          test "$(git rev-parse HEAD)" = "$SOURCE_REVISION"
+          git -C ../packaging rev-parse HEAD
           xcodebuild -version
           xcrun --sdk macosx --show-sdk-version
           xcrun swiftc --version
@@ -36,9 +43,9 @@ jobs:
         run: make check
       - name: Render named external UI and verify batch service
         run: ruby packaging/scripts/contribution-preview/prepare.rb source batch-display-connections packaging/build/named-preview
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
-          name: named-external-preview-57d65b5
+          name: named-external-preview-${{ env.TEST_BUILD }}
           path: packaging/build/named-preview/*.png
           retention-days: 30
       - name: Build complete universal app
@@ -56,15 +63,17 @@ jobs:
           APP=build/Crisp.app
           PLIST="$APP/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName Crisp Feature Test' "$PLIST"
-          /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 17004' "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $TEST_BUILD" "$PLIST"
           /usr/libexec/PlistBuddy -c 'Set :SUEnableAutomaticChecks false' "$PLIST"
           /usr/libexec/PlistBuddy -c 'Add :SUAllowsAutomaticUpdates bool false' "$PLIST"
           /usr/libexec/PlistBuddy -c 'Add :SUAutomaticallyUpdate bool false' "$PLIST"
-          /usr/libexec/PlistBuddy -c 'Add :CrispFeatureSourceRevision string 57d65b5c5da1fc35d54967022cdae3f57dbdc1d1' "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CrispFeatureSourceRevision string $SOURCE_REVISION" "$PLIST"
           mkdir -p build/installer deliverables
-          jq -n --arg source "$(git rev-parse HEAD)" --arg xcode "$(xcodebuild -version)" \
+          jq -n --arg source "$(git rev-parse HEAD)" --arg tree "$(git rev-parse HEAD^{tree})" \
+            --arg packaging "$(git -C ../packaging rev-parse HEAD)" --argjson build "$TEST_BUILD" \
+            --arg xcode "$(xcodebuild -version)" \
             --arg sdk "$(xcrun --sdk macosx --show-sdk-version)" --arg built "$(date -u +%FT%TZ)" \
-            '{sourceRevision:$source,xcode:$xcode,sdk:$sdk,builtAt:$built,minimumMacOS:"14.0",architectures:["arm64","x86_64"],signing:"ad-hoc",notarized:false,features:["per-display connection switch","external-only named batch control: four columns","keep Tools expanded","equal 16:9 diagonal template SVG menu icon"],automaticUpdateDefaultsDisabled:true}' \
+            '{sourceRevision:$source,sourceTree:$tree,packagingRevision:$packaging,testBuild:$build,packageKind:"cloud-verification",xcode:$xcode,sdk:$sdk,builtAt:$built,minimumMacOS:"14.0",architectures:["arm64","x86_64"],signing:"ad-hoc",notarized:false,features:["per-display connection switch","external-only named batch control: four columns","keep Tools expanded","equal 16:9 diagonal template SVG menu icon","late transaction safety and recovery"],automaticUpdateDefaultsDisabled:true}' \
             > "$APP/Contents/Resources/FeatureBuild.json"
           codesign --force --sign - --entitlements Crisp/Crisp.entitlements "$APP"
           codesign --verify --deep --strict "$APP"
@@ -74,29 +83,31 @@ jobs:
           test -d "$APP/Contents/Frameworks/Sparkle.framework"
           test -s "$APP/Contents/Resources/zh-Hans.lproj/Localizable.strings"
           test -s "$APP/Contents/Resources/zh-Hant.lproj/Localizable.strings"
-          lipo "$APP/Contents/MacOS/Crisp" -verify_arch arm64 x86_64
-          lipo "$APP/Contents/MacOS/crispctl" -verify_arch arm64 x86_64
+          for arch in arm64 x86_64; do
+            lipo "$APP/Contents/MacOS/Crisp" -verify_arch "$arch"
+            lipo "$APP/Contents/MacOS/crispctl" -verify_arch "$arch"
+          done
           "$APP/Contents/MacOS/crispctl" --help
           cp "$APP/Contents/Resources/FeatureBuild.json" deliverables/FeatureBuild.json
           cp ../packaging/docs/FEATURE-TEST-INSTALL.md build/installer/INSTALL-TEST.md
           ditto "$APP" build/installer/Crisp.app
           ln -s /Applications build/installer/Applications
-          git archive --format=zip --prefix=Crisp-source/ --output=deliverables/Crisp-svg-icon-source-57d65b5.zip HEAD
-          cp deliverables/Crisp-svg-icon-source-57d65b5.zip build/installer/SourceCode.zip
+          git archive --format=zip --prefix=Crisp-source/ --output=deliverables/Crisp-feature-test-source.zip HEAD
+          cp deliverables/Crisp-feature-test-source.zip build/installer/SourceCode.zip
           hdiutil create -volname 'Crisp Feature Test' -srcfolder build/installer \
-            -ov -format UDZO deliverables/Crisp-svg-icon-57d65b5.dmg
-          hdiutil verify deliverables/Crisp-svg-icon-57d65b5.dmg
-          shasum -a 256 deliverables/Crisp-svg-icon-57d65b5.dmg \
-            deliverables/Crisp-svg-icon-source-57d65b5.zip > deliverables/SHA256SUMS.txt
-      - uses: actions/upload-artifact@v4
+            -ov -format UDZO deliverables/Crisp-feature-test.dmg
+          hdiutil verify deliverables/Crisp-feature-test.dmg
+          (cd deliverables && shasum -a 256 Crisp-feature-test.dmg Crisp-feature-test-source.zip > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v6
         with:
-          name: Crisp-svg-icon-57d65b5
+          name: ${{ env.ARTIFACT_NAME }}
           path: source/deliverables/
+          if-no-files-found: error
           retention-days: 30
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: named-external-verification-57d65b5
+          name: named-external-verification-${{ env.TEST_BUILD }}
           path: |
             packaging/build/named-preview/*.png
             packaging/build/packaged-icon/*.png
